@@ -10,7 +10,8 @@ venv/
 env/
 
 # Backend storage (runtime data)
-web-compare/backend/storage/
+web-compare/backend/storage/*/
+!web-compare/backend/storage/.gitkeep
 
 # Environment files
 .env
@@ -21,6 +22,8 @@ web-compare/backend/storage/
 node_modules/
 web-compare/frontend/node_modules/
 web-compare/frontend/dist/
+dist/
+.vite/
 
 # IDE
 .vscode/
@@ -41,3 +44,14 @@ npm-debug.log*
 htmlcov/
 .coverage
 coverage/
+
+# Claude Code
+.claude/
+
+# Temp test files
+test_*.png
+
+# Pytest cache
+.pytest_cache/
+web-compare/backend/.pytest_cache/
+web-compare/backend/tests/__pycache__/
