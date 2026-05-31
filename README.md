@@ -61,25 +61,30 @@ npm install
 
 **4. Start the application**
 
-> **Note for Windows users (Python 3.13+)**: The `--reload` flag is incompatible with Playwright's subprocess management on Python 3.13+ Windows. Use the commands below instead.
-
 **Option A — One-command startup (recommended):**
 
 ```bash
 python start.py
 ```
 
+This starts both backend (port 8002) and frontend (port 5173) automatically. Works on Windows, macOS, and Linux.
+
 **Option B — Start separately (two terminals):**
 
-Start the backend:
+Terminal 1 — Backend:
 
 ```bash
 cd backend
-venv\Scripts\activate  # if not already activated
+# Windows:
+venv\Scripts\activate
 python -c "import asyncio, sys; asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy()); import uvicorn; from app.main import app; uvicorn.run(app, host='127.0.0.1', port=8002, reload=False)"
+
+# macOS / Linux:
+source venv/bin/activate
+uvicorn app.main:app --host 127.0.0.1 --port 8002
 ```
 
-Start the frontend:
+Terminal 2 — Frontend:
 
 ```bash
 cd frontend

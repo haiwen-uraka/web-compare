@@ -26,8 +26,12 @@ export default function HistoryPage() {
 
   async function handleDelete(taskId) {
     if (!confirm(t('history.delete_confirm'))) return
-    await deleteComparison(taskId)
-    queryClient.invalidateQueries({ queryKey: ['comparisons'] })
+    try {
+      await deleteComparison(taskId)
+      queryClient.invalidateQueries({ queryKey: ['comparisons'] })
+    } catch {
+      // Silently handle delete errors; the item may already be gone
+    }
   }
 
   async function handleReCompare(item) {

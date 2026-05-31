@@ -212,12 +212,31 @@ body {
   border-radius: 0.5rem;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   color: #636366;
+  cursor: pointer;
+}
+
+.segmented-control button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+  color: #1D1D1F;
+}
+
+.segmented-control button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.segmented-control button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .segmented-control button.active {
   background: white;
   color: #1D1D1F;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+}
+
+.segmented-control button.active:hover:not(:disabled) {
+  background: white;
 }
 
 /* === Skeleton Loading === */

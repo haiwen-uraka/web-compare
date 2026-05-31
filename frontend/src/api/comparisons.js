@@ -5,8 +5,9 @@ const api = axios.create({
   timeout: 10000,
 })
 
-export async function createComparison(data) {
-  const response = await api.post('/comparisons', data)
+export async function createComparison(data, { force = false } = {}) {
+  const url = force ? '/comparisons?force=true' : '/comparisons'
+  const response = await api.post(url, data)
   return response.data
 }
 

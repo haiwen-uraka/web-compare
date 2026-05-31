@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import uuid
 import httpx
 from datetime import datetime, timezone
@@ -14,6 +15,7 @@ from app.services.cache import comparison_cache
 from app.services.url_validator import validate_url
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # In-memory task store: task_id -> ComparisonResult
 task_store: dict[str, ComparisonResult] = {}
@@ -27,7 +29,10 @@ async def create_comparison(request: ComparisonRequest, req: Request):
         if not valid:
             raise HTTPException(status_code=400, detail=f"{label}: {msg}")
 
-    # Check cache first
+    # Check cache first (skip if force=true)
+    force = req.query_params.get("force", "false").lower() == "true"
+    if force:
+        comparison_cache.invalidate(request.url_a, request.url_b)
     cached = comparison_cache.get(request.url_a, request.url_b)
     if cached is not None:
         return JSONResponse(
@@ -78,8 +83,9 @@ async def probe_url(url: str = Query(..., description="URL to check reachability
             }
     except httpx.TimeoutException:
         return {"reachable": False, "status_code": None, "error": "Timeout"}
-    except Exception as e:
-        return {"reachable": False, "status_code": None, "error": str(e)}
+    except Exception:
+        logger.warning("Probe failed for url=%s", url, exc_info=True)
+        return {"reachable": False, "status_code": None, "error": "Connection failed"}
 
 
 @router.get("")
@@ -152,6 +158,11 @@ async def list_comparisons(
 
 @router.get("/{task_id}")
 async def get_comparison(task_id: str):
+    # Validate task_id format to prevent path traversal
+    import re
+    if not re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", task_id):
+        raise HTTPException(status_code=400, detail="Invalid task ID format")
+
     if task_id in task_store:
         return task_store[task_id]
 
@@ -165,6 +176,10 @@ async def get_comparison(task_id: str):
 
 @router.delete("/{task_id}")
 async def delete_comparison(task_id: str):
+    import re
+    if not re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", task_id):
+        raise HTTPException(status_code=400, detail="Invalid task ID format")
+
     url_a = url_b = None
     if task_id in task_store:
         url_a = task_store[task_id].url_a

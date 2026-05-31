@@ -1,82 +1,89 @@
 import { useTranslation } from 'react-i18next'
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { IconZoomIn, IconZoomOut, IconReset, IconTarget, IconChevronRight, IconLayers } from '../shared/Icons'
+import { IconTarget, IconLayers, IconSlider } from '../shared/Icons'
+
+function getRegionSeverity(ratio) {
+  if (ratio > 50) return 'high'
+  if (ratio > 20) return 'medium'
+  return 'low'
+}
 
 export default function VisualDiffViewer({ taskId, visualDiff }) {
   const { t } = useTranslation()
   const [view, setView] = useState('diff')
   const [imgError, setImgError] = useState({})
-  const [zoom, setZoom] = useState(1)
-  const [panning, setPanning] = useState(false)
-  const [panPos, setPanPos] = useState({ x: 0, y: 0 })
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 })
+  const [imgLoaded, setImgLoaded] = useState({})
   const [imageSize, setImageSize] = useState({ w: 0, h: 0 })
   const [activeRegion, setActiveRegion] = useState(null)
   const [showRegions, setShowRegions] = useState(true)
-  const imgRef = useRef(null)
+  const [swipePos, setSwipePos] = useState(50)
+  const [swipeDragging, setSwipeDragging] = useState(false)
+  const [onionOpacity, setOnionOpacity] = useState(50)
   const containerRef = useRef(null)
-  const regionListRef = useRef(null)
+  const swipeRef = useRef(null)
+  const imgRef = useRef(null)
 
   if (!visualDiff) return null
 
+  const screenshotAUrl = `/api/comparisons/${taskId}/screenshots/a`
+  const screenshotBUrl = `/api/comparisons/${taskId}/screenshots/b`
   const diffUrl = `/api/comparisons/${taskId}/diffs/visual`
-  const hlAUrl = `/api/comparisons/${taskId}/diffs/visual-highlight/a`
-  const hlBUrl = `/api/comparisons/${taskId}/diffs/visual-highlight/b`
 
   const noDiff = visualDiff.diff_percentage === 0
-  const currentSrc = view === 'diff' ? diffUrl : view === 'hl-a' ? hlAUrl : hlBUrl
   const regions = visualDiff.diff_regions || []
-  const maxW = imageSize.w || visualDiff.width_a || visualDiff.width_b || 1280
-  const maxH = imageSize.h || Math.max(visualDiff.height_a || 0, visualDiff.height_b || 0) || 720
-
-  const handleWheel = useCallback((e) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault()
-      const delta = e.deltaY > 0 ? -0.1 : 0.1
-      setZoom(z => Math.max(0.25, Math.min(5, z + delta)))
-    }
-  }, [])
-
-  const handleMouseDown = useCallback((e) => {
-    if (zoom > 1) {
-      setPanning(true)
-      setPanStart({ x: e.clientX - panPos.x, y: e.clientY - panPos.y })
-    }
-  }, [zoom, panPos])
-
-  const handleMouseMove = useCallback((e) => {
-    if (panning && zoom > 1) {
-      setPanPos({ x: e.clientX - panStart.x, y: e.clientY - panStart.y })
-    }
-  }, [panning, panStart])
-
-  const handleMouseUp = useCallback(() => setPanning(false), [])
-
-  const resetZoom = useCallback(() => {
-    setZoom(1)
-    setPanPos({ x: 0, y: 0 })
-    setActiveRegion(null)
-  }, [])
+  const diffReady = imgLoaded['diff'] && imageSize.w > 0
 
   const handleImageLoad = useCallback((e) => {
     setImageSize({ w: e.target.naturalWidth, h: e.target.naturalHeight })
   }, [])
 
-  const scrollToRegion = useCallback((region) => {
-    setActiveRegion(region.y)
-    if (!containerRef.current) return
-    // Calculate position to center the region
-    const containerH = containerRef.current.clientHeight
-    const targetY = region.y * zoom - containerH / 2 + region.height * zoom / 2
-    setPanPos(prev => ({ ...prev, y: -targetY }))
-    // Adjust zoom to fit region width if zoom = 1
-    if (zoom === 1 && region.width < maxW * 0.6) {
-      setZoom(Math.min(3, containerRef.current.clientWidth / region.width * 0.8))
-    }
-  }, [zoom, maxW])
+  // Scroll to center a region in the container
+  const scrollToRegion = useCallback((region, index) => {
+    setActiveRegion(index)
+    const el = containerRef.current
+    if (!el) return
 
-  const highlightRegion = useCallback((y) => {
-    setActiveRegion(y)
+    const cx = region.x + region.width / 2
+    const cy = region.y + region.height / 2
+
+    el.scrollTo({
+      left: Math.max(0, cx - el.clientWidth / 2),
+      top: Math.max(0, cy - el.clientHeight / 2),
+      behavior: 'smooth',
+    })
+  }, [])
+
+  // Swipe drag — global listeners so dragging works even outside the container
+  const handleSwipeMouseDown = useCallback((e) => {
+    e.preventDefault()
+    setSwipeDragging(true)
+  }, [])
+
+  useEffect(() => {
+    if (!swipeDragging) return
+    const handleMove = (e) => {
+      if (!swipeRef.current) return
+      const rect = swipeRef.current.getBoundingClientRect()
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left
+      setSwipePos(Math.max(5, Math.min(95, Math.round((x / rect.width) * 100))))
+    }
+    const handleUp = () => setSwipeDragging(false)
+    window.addEventListener('mousemove', handleMove)
+    window.addEventListener('mouseup', handleUp)
+    window.addEventListener('touchmove', handleMove, { passive: false })
+    window.addEventListener('touchend', handleUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMove)
+      window.removeEventListener('mouseup', handleUp)
+      window.removeEventListener('touchmove', handleMove)
+      window.removeEventListener('touchend', handleUp)
+    }
+  }, [swipeDragging])
+
+  // Switch view and reset
+  const switchView = useCallback((newView) => {
+    setView(newView)
+    setActiveRegion(null)
   }, [])
 
   if (noDiff) {
@@ -87,10 +94,106 @@ export default function VisualDiffViewer({ taskId, visualDiff }) {
           {t('visual_diff.title')}
         </h3>
         <div className="flex items-center gap-2 rounded-xl bg-apple-green-light p-4 text-apple-green">
-          <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="4 12 9 17 20 6" />
-          </svg>
+          <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 12 9 17 20 6" /></svg>
           <span className="text-[13px] font-medium">{t('visual_diff.no_diff')}</span>
+        </div>
+      </div>
+    )
+  }
+
+  const viewTabs = [
+    { key: 'diff', label: t('visual_diff.diff'), desc: '差异像素高亮' },
+    { key: 'overlay', label: '叠加对比', desc: '滑动对比 A/B' },
+    { key: 'onion', label: '洋葱皮', desc: '透明度混合' },
+  ]
+
+  // Render region overlays (shared between diff and onion views)
+  function renderRegionOverlays(isDiffView) {
+    if (!showRegions || !diffReady) return null
+    return regions.map((region, i) => {
+      const sev = getRegionSeverity(region.diff_ratio)
+      const isActive = activeRegion === i
+      const labelTop = region.y < 24 ? region.y + 4 : -22
+      return (
+        <div
+          key={i}
+          className="absolute cursor-pointer transition-all duration-200"
+          style={{
+            left: region.x, top: region.y, width: region.width, height: region.height,
+            border: isActive
+              ? '2.5px solid #007AFF'
+              : isDiffView
+                ? (sev === 'high' ? '2px solid #FF3B30' : sev === 'medium' ? '2px solid #FF9500' : '1.5px solid rgba(0,122,255,0.5)')
+                : '1.5px dashed rgba(255,59,48,0.6)',
+            borderRadius: 3,
+            background: isActive ? 'rgba(0,122,255,0.12)' : (isDiffView && sev === 'high' ? 'rgba(255,59,48,0.10)' : 'transparent'),
+            boxShadow: isActive ? '0 0 0 3px rgba(0,122,255,0.2), 0 0 12px rgba(0,122,255,0.15)' : (isDiffView && sev === 'high' ? '0 0 8px rgba(255,59,48,0.2)' : 'none'),
+          }}
+          onClick={() => scrollToRegion(region, i)}
+          onMouseEnter={() => setActiveRegion(i)}
+          onMouseLeave={() => setActiveRegion(null)}
+        >
+          {isDiffView && (
+            <span
+              className="absolute font-bold px-1.5 py-0.5 rounded text-white shadow-sm whitespace-nowrap"
+              style={{ top: labelTop, left: 0, fontSize: 10, background: isActive ? '#007AFF' : sev === 'high' ? '#FF3B30' : sev === 'medium' ? '#FF9500' : '#007AFF' }}
+            >
+              #{i + 1} {region.diff_ratio}%
+            </span>
+          )}
+        </div>
+      )
+    })
+  }
+
+  // Render region list sidebar
+  function renderRegionSidebar() {
+    if (view === 'overlay' || !showRegions || regions.length === 0) return null
+    return (
+      <div className="hidden lg:flex lg:flex-col lg:w-56 lg:shrink-0">
+        <p className="text-[12px] font-semibold text-apple-gray-700 mb-2 flex items-center gap-1.5 shrink-0">
+          <IconTarget className="w-3.5 h-3.5" />
+          {t('visual_diff.diff_regions')}
+        </p>
+        <div className="space-y-1.5 flex-1 overflow-y-auto pr-1 min-h-0">
+          {regions.map((region, i) => {
+            const sev = getRegionSeverity(region.diff_ratio)
+            const isActive = activeRegion === i
+            const sc = {
+              high: { border: '#FF3B30', bg: 'rgba(255,59,48,0.06)', text: '#FF3B30', label: 'HIGH' },
+              medium: { border: '#FF9500', bg: 'rgba(255,149,0,0.06)', text: '#FF9500', label: 'MED' },
+              low: { border: '#007AFF', bg: 'rgba(0,122,255,0.06)', text: '#007AFF', label: 'LOW' },
+            }[sev]
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => scrollToRegion(region, i)}
+                onMouseEnter={() => setActiveRegion(i)}
+                onMouseLeave={() => setActiveRegion(null)}
+                className="w-full text-left rounded-lg px-2.5 py-2 text-[11px] transition-all hover:shadow-apple-sm"
+                style={{
+                  borderLeft: `3px solid ${sc.border}`,
+                  background: isActive ? sc.bg : 'transparent',
+                  outline: isActive ? `2px solid ${sc.border}40` : 'none',
+                  outlineOffset: -2,
+                  transform: isActive ? 'scale(1.02)' : 'scale(1)',
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold text-apple-gray-800">#{i + 1}</span>
+                    <span className="text-[9px] font-bold px-1 py-0.5 rounded" style={{ background: `${sc.border}15`, color: sc.text }}>{sc.label}</span>
+                  </div>
+                  <span className="font-bold" style={{ color: sc.text, fontSize: 13 }}>{region.diff_ratio}%</span>
+                </div>
+                <p className="text-apple-gray-500 mt-0.5">{region.width}×{region.height}px</p>
+                <div className="mt-1 h-1 rounded-full bg-apple-gray-200 overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(region.diff_ratio, 100)}%`, background: sc.border }} />
+                </div>
+              </button>
+            )
+          })}
         </div>
       </div>
     )
@@ -108,161 +211,117 @@ export default function VisualDiffViewer({ taskId, visualDiff }) {
           </span>
         </h3>
         <div className="flex flex-wrap items-center gap-2">
-          {/* View selector */}
           <div className="segmented-control">
-            {[
-              { key: 'diff', label: t('visual_diff.diff') },
-              { key: 'hl-a', label: t('visual_diff.a_highlight') },
-              { key: 'hl-b', label: t('visual_diff.b_highlight') },
-            ].map(({ key, label }) => (
-              <button key={key} type="button" onClick={() => setView(key)} className={`${view === key ? 'active' : ''}`}>
+            {viewTabs.map(({ key, label }) => (
+              <button key={key} type="button" onClick={() => switchView(key)} className={view === key ? 'active' : ''} title={viewTabs.find(v => v.key === key)?.desc}>
                 {label}
               </button>
             ))}
           </div>
-          {/* Region toggle */}
-          {regions.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowRegions(!showRegions)}
-              className={`btn-apple btn-apple-secondary text-[11px] ${showRegions ? '!bg-apple-blue-light !text-apple-blue !border-apple-blue/20' : ''}`}
-            >
+          {view === 'onion' && (
+            <div className="flex items-center gap-1.5 rounded-xl bg-apple-gray-100 px-2.5 py-1">
+              <span className="text-[10px] font-medium text-apple-blue">A</span>
+              <input type="range" min={0} max={100} value={onionOpacity} onChange={(e) => setOnionOpacity(Number(e.target.value))} className="apple-slider w-24" />
+              <span className="text-[10px] font-medium text-apple-green">B</span>
+              <span className="text-[10px] text-apple-gray-500 min-w-[28px] text-right">{onionOpacity}%</span>
+            </div>
+          )}
+          {view !== 'overlay' && regions.length > 0 && (
+            <button type="button" onClick={() => setShowRegions(!showRegions)}
+              className={`btn-apple btn-apple-secondary text-[11px] ${showRegions ? '!bg-apple-blue-light !text-apple-blue !border-apple-blue/20' : ''}`}>
               <IconTarget className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{regions.length} {t('visual_diff.regions')}</span>
             </button>
           )}
-          {/* Zoom controls */}
-          <div className="flex items-center rounded-xl bg-apple-gray-100 p-0.5">
-            <button type="button" onClick={() => setZoom(z => Math.max(0.25, z - 0.25))} className="icon-btn rounded-lg px-1.5 py-1 text-apple-gray-500 hover:text-apple-gray-700">
-              <IconZoomOut className="w-3.5 h-3.5" />
-            </button>
-            <span className="min-w-[42px] text-center text-[11px] font-medium text-apple-gray-600">{Math.round(zoom * 100)}%</span>
-            <button type="button" onClick={() => setZoom(z => Math.min(5, z + 0.25))} className="icon-btn rounded-lg px-1.5 py-1 text-apple-gray-500 hover:text-apple-gray-700">
-              <IconZoomIn className="w-3.5 h-3.5" />
-            </button>
-            <button type="button" onClick={resetZoom} className="icon-btn rounded-lg px-1.5 py-1 text-apple-gray-400 hover:text-apple-gray-600">
-              <IconReset className="w-3.5 h-3.5" />
-            </button>
-          </div>
         </div>
       </div>
 
-      <div className="flex gap-4">
-        {/* Diff image with regions */}
-        <div className="flex-1 min-w-0">
-          <div
-            ref={containerRef}
-            className="relative overflow-hidden rounded-xl border border-apple-gray-200 bg-[#fafafa]"
-            style={{ cursor: zoom > 1 ? (panning ? 'grabbing' : 'grab') : 'default', minHeight: 300 }}
-            onWheel={handleWheel}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          >
+      <div className="flex gap-4 items-stretch">
+          {/* ── DIFF VIEW — scrollable ── */}
+          {view === 'diff' && (
             <div
-              className="flex items-start justify-center transition-transform duration-75"
-              style={{
-                transform: `translate(${panPos.x}px, ${panPos.y}px) scale(${zoom})`,
-                transformOrigin: '0 0',
-              }}
+              ref={containerRef}
+              className="flex-1 min-w-0 overflow-auto rounded-xl border border-apple-gray-200"
+              style={{ height: 1400, background: '#fafafa' }}
             >
-              {!imgError[view] ? (
-                <div className="relative inline-block">
+              {!imgError['diff'] ? (
+                <div className="relative inline-block" style={imageSize.w ? { width: imageSize.w, height: imageSize.h, background: '#fff' } : undefined}>
+                  {!imgLoaded['diff'] && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-apple-gray-100 min-h-[300px] pointer-events-none z-10">
+                      <div className="skeleton h-full w-full" />
+                    </div>
+                  )}
+                  <img src={screenshotAUrl} alt="" className="max-w-none block" draggable={false} />
                   <img
                     ref={imgRef}
-                    src={currentSrc}
+                    src={diffUrl}
                     alt={t('visual_diff.diff')}
-                    className="max-w-none"
+                    className={`max-w-none absolute top-0 left-0 transition-opacity duration-300 mix-blend-multiply ${imgLoaded['diff'] ? 'opacity-80' : 'opacity-0'}`}
                     draggable={false}
-                    onLoad={handleImageLoad}
-                    onError={() => setImgError(e => ({ ...e, [view]: true }))}
+                    onLoad={(e) => { setImgLoaded(p => ({ ...p, diff: true })); handleImageLoad(e) }}
+                    onError={() => setImgError(e => ({ ...e, diff: true }))}
                   />
-                  {/* Diff region overlays */}
-                  {showRegions && regions.map((region, i) => (
-                    <div
-                      key={i}
-                      className={`absolute border-2 rounded transition-all duration-200 cursor-pointer ${
-                        activeRegion === region.y
-                          ? 'border-apple-blue bg-apple-blue/15 shadow-[0_0_0_4px_rgba(0,122,255,0.2)] z-10'
-                          : 'border-apple-red/60 bg-transparent hover:border-apple-red hover:bg-apple-red/8'
-                      }`}
-                      style={{
-                        left: region.x,
-                        top: region.y,
-                        width: region.width,
-                        height: region.height,
-                      }}
-                      onClick={() => scrollToRegion(region)}
-                      onMouseEnter={() => highlightRegion(region.y)}
-                      onMouseLeave={() => highlightRegion(null)}
-                      title={`#${i + 1}: ${region.diff_ratio}% diff`}
-                    >
-                      <span className={`absolute -top-5 left-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                        activeRegion === region.y ? 'bg-apple-blue text-white' : 'bg-apple-red text-white'
-                      }`}>
-                        #{i + 1} {region.diff_ratio}%
-                      </span>
-                    </div>
-                  ))}
+                  {renderRegionOverlays(true)}
                 </div>
               ) : (
                 <div className="flex h-48 w-full items-center justify-center text-sm text-apple-red">
-                  {view === 'diff' ? t('visual_diff.diff_unavailable') : t('visual_diff.hl_unavailable')}
+                  {t('visual_diff.diff_unavailable')}
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Zoom hint */}
-          {zoom === 1 && (
-            <p className="mt-1.5 text-[10px] text-apple-gray-400">Ctrl+{t('visual_diff.scroll_zoom')} &middot; {t('visual_diff.drag_to_pan')}</p>
           )}
-        </div>
 
-        {/* Region list sidebar */}
-        {showRegions && regions.length > 0 && (
-          <div ref={regionListRef} className="hidden lg:block w-56 shrink-0">
-            <p className="text-[12px] font-semibold text-apple-gray-700 mb-2 flex items-center gap-1.5">
-              <IconTarget className="w-3.5 h-3.5" />
-              {t('visual_diff.diff_regions')}
-            </p>
-            <div className="space-y-1 max-h-[500px] overflow-y-auto pr-1">
-              {regions.map((region, i) => {
-                const severity = region.diff_ratio > 50 ? 'high' : region.diff_ratio > 20 ? 'medium' : 'low'
-                const colors = {
-                  high: 'border-l-apple-red bg-apple-red-light/30',
-                  medium: 'border-l-apple-orange bg-apple-orange-light/30',
-                  low: 'border-l-apple-blue bg-apple-blue-light/30',
-                }
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => scrollToRegion(region)}
-                    onMouseEnter={() => highlightRegion(region.y)}
-                    onMouseLeave={() => highlightRegion(null)}
-                    className={`w-full text-left rounded-lg border-l-[3px] px-2.5 py-2 text-[11px] transition-all hover:shadow-apple-sm ${
-                      colors[severity]
-                    } ${activeRegion === region.y ? 'ring-2 ring-apple-blue/30 scale-[1.02]' : ''}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-apple-gray-800">#{i + 1}</span>
-                      <span className={`font-medium ${
-                        severity === 'high' ? 'text-apple-red' : severity === 'medium' ? 'text-apple-orange' : 'text-apple-blue'
-                      }`}>{region.diff_ratio}%</span>
-                    </div>
-                    <p className="text-apple-gray-500 mt-0.5">{region.width}×{region.height}px</p>
-                    <p className="text-apple-gray-400 text-[10px] mt-0.5">{region.diff_pixel_count.toLocaleString()} px diff</p>
-                  </button>
-                )
-              })}
+          {/* ── OVERLAY / SWIPE VIEW ── */}
+          {view === 'overlay' && (
+            <div
+              ref={swipeRef}
+              className={`flex-1 min-w-0 relative overflow-hidden rounded-xl border border-apple-gray-200 select-none ${swipeDragging ? 'cursor-ew-resize' : ''}`}
+              style={{ background: '#f5f5f7', height: 1400 }}
+            >
+              <div className="relative overflow-auto h-[1400px]">
+                <img src={screenshotBUrl} alt="B" className="max-w-none block" draggable={false} />
+              </div>
+              <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 ${100 - swipePos}% 0 0)` }}>
+                <img src={screenshotAUrl} alt="A" className="max-w-none block" draggable={false} />
+              </div>
+              <div className="absolute top-0 bottom-0 w-[2px] bg-white shadow-[0_0_8px_rgba(0,0,0,0.2)] pointer-events-none z-10" style={{ left: `${swipePos}%` }} />
+              <div
+                className="absolute top-1/2 z-20 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize items-center justify-center rounded-full bg-white/90 shadow-apple-md border border-apple-gray-200/80 backdrop-blur-sm transition-transform hover:scale-110 active:scale-95"
+                style={{ left: `${swipePos}%` }}
+                onMouseDown={handleSwipeMouseDown}
+                onTouchStart={handleSwipeMouseDown}
+              >
+                <IconSlider className="w-5 h-5 text-apple-gray-500" />
+              </div>
+              <input type="range" min={1} max={100} value={swipePos} onChange={(e) => setSwipePos(Number(e.target.value))} className="apple-slider absolute bottom-3 left-3 right-3 z-10" style={{ width: 'calc(100% - 24px)' }} />
+              <div className="absolute top-3 left-3 z-10"><span className="rounded-lg bg-apple-blue/90 backdrop-blur-sm px-2.5 py-1 text-[11px] font-semibold text-white shadow-apple-sm">A</span></div>
+              <div className="absolute top-3 right-3 z-10"><span className="rounded-lg bg-apple-green/90 backdrop-blur-sm px-2.5 py-1 text-[11px] font-semibold text-white shadow-apple-sm">B</span></div>
+              <div className="absolute bottom-3 right-3 z-10"><span className="rounded-lg bg-black/20 backdrop-blur-sm px-2 py-0.5 text-[10px] text-white/80">← → 拖拽对比</span></div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* ── ONION SKIN VIEW — scrollable ── */}
+          {view === 'onion' && (
+            <div
+              ref={containerRef}
+              className="flex-1 min-w-0 overflow-auto rounded-xl border border-apple-gray-200"
+              style={{ height: 1400, background: '#fafafa' }}
+            >
+              <div className="relative inline-block" style={imageSize.w ? { width: imageSize.w, height: imageSize.h, background: '#fff' } : undefined}>
+                <img src={screenshotAUrl} alt="A" className="max-w-none block" draggable={false}
+                  style={{ opacity: 1 - onionOpacity / 100 }} />
+                <img src={screenshotBUrl} alt="B" className="max-w-none absolute top-0 left-0" draggable={false}
+                  style={{ opacity: onionOpacity / 100 }} />
+                {renderRegionOverlays(false)}
+              </div>
+            </div>
+          )}
+
+        {renderRegionSidebar()}
       </div>
 
-      {/* Pixel diff stats */}
+      <p className="mt-1.5 text-[10px] text-apple-gray-400">滚动查看 · 点击差异区域定位</p>
+
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-apple-gray-400">
         <span className="font-medium text-apple-gray-500">{t('visual_diff.pixel_diff')}</span>
         <span>{visualDiff.diff_pixel_count.toLocaleString()} / {visualDiff.total_pixels.toLocaleString()} {t('visual_diff.pixels')}</span>

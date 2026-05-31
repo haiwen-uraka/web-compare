@@ -203,10 +203,19 @@ class PlaywrightManager:
                     screenshot = await page.screenshot(full_page=full_page, type="png")
                     dom_tree = await self._safe_evaluate(page, DOM_EXTRACTOR_JS)
                     text_content = await self._safe_evaluate(page, "document.body.innerText")
+                    # Only set warning (not error) if screenshot was captured successfully
+                    if screenshot:
+                        logger.info("Partial capture succeeded for %s despite navigation issue", url)
+                        return PageCapture(
+                            screenshot=screenshot,
+                            dom_tree=dom_tree,
+                            text_content=text_content,
+                            error=None,  # Don't flag as error — screenshot is usable
+                        )
                     return PageCapture(
-                        screenshot=screenshot,
-                        dom_tree=dom_tree,
-                        text_content=text_content,
+                        screenshot=b"",
+                        dom_tree=None,
+                        text_content=None,
                         error=f"Navigation issue: {nav_error}",
                     )
                 except Exception as e2:

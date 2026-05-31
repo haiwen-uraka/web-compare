@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout'
 import HomePage from './pages/HomePage'
 import ResultsPage from './pages/ResultsPage'
@@ -11,6 +11,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/compare/:taskId" element={<ResultsPage />} />
         <Route path="/history" element={<HistoryPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
   )

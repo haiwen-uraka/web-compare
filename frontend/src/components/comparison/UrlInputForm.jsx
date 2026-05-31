@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
+import { probeUrl } from '../../api/comparisons'
 import { IconCompare, IconSwap, IconCheck, IconWarning, IconShield, IconLightning, IconChevronDown, IconBookmark } from '../shared/Icons'
 
 const DEBOUNCE_MS = 600
@@ -30,6 +30,7 @@ export default function UrlInputForm({ onSubmit, isLoading, initialUrlA, initial
   const [presetName, setPresetName] = useState('')
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const probeTimers = useRef({ a: null, b: null })
+  const latestUrlRef = useRef({ a: '', b: '' })
 
   useEffect(() => {
     if (initialUrlA !== undefined) setUrlA(initialUrlA)
@@ -43,16 +44,22 @@ export default function UrlInputForm({ onSubmit, isLoading, initialUrlA, initial
     }
     side === 'a' ? setProbing(p => ({ ...p, a: true })) : setProbing(p => ({ ...p, b: true }))
     try {
-      const res = await axios.get(`/api/comparisons/probe?url=${encodeURIComponent(url)}`)
-      side === 'a' ? setProbeA(res.data) : setProbeB(res.data)
+      const res = await probeUrl(url)
+      // Discard stale response if URL changed during the request
+      if (latestUrlRef.current[side] !== url) return
+      side === 'a' ? setProbeA(res) : setProbeB(res)
     } catch {
+      if (latestUrlRef.current[side] !== url) return
       side === 'a' ? setProbeA({ reachable: false }) : setProbeB({ reachable: false })
     } finally {
-      side === 'a' ? setProbing(p => ({ ...p, a: false })) : setProbing(p => ({ ...p, b: false }))
+      if (latestUrlRef.current[side] === url) {
+        side === 'a' ? setProbing(p => ({ ...p, a: false })) : setProbing(p => ({ ...p, b: false }))
+      }
     }
   }, [])
 
   const debouncedProbe = useCallback((url, side) => {
+    latestUrlRef.current[side] = url
     if (probeTimers.current[side]) clearTimeout(probeTimers.current[side])
     probeTimers.current[side] = setTimeout(() => probe(url, side), DEBOUNCE_MS)
   }, [probe])

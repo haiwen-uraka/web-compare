@@ -1,9 +1,19 @@
 import json
+import re
 import time
 import shutil
 from pathlib import Path
 
 from app.config import settings
+
+# Only allow UUID-format task IDs (no path traversal possible)
+_TASK_ID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
+def _validate_task_id(task_id: str) -> None:
+    """Raise ValueError if task_id is not a safe UUID."""
+    if not _TASK_ID_RE.match(task_id):
+        raise ValueError(f"Invalid task_id format: {task_id}")
 
 
 class FileStorage:
@@ -12,7 +22,11 @@ class FileStorage:
         self.root.mkdir(parents=True, exist_ok=True)
 
     def _task_dir(self, task_id: str) -> Path:
-        path = self.root / task_id
+        _validate_task_id(task_id)
+        path = (self.root / task_id).resolve()
+        # Double-check resolved path is under root
+        if not str(path).startswith(str(self.root.resolve())):
+            raise ValueError("task_id resolves outside storage root")
         path.mkdir(parents=True, exist_ok=True)
         return path
 
@@ -22,7 +36,10 @@ class FileStorage:
             json.dump(data, f, ensure_ascii=False, indent=2, default=str)
 
     def load_json(self, task_id: str, filename: str) -> dict | None:
-        path = self.root / task_id / filename
+        _validate_task_id(task_id)
+        path = (self.root / task_id / filename).resolve()
+        if not str(path).startswith(str(self.root.resolve())):
+            return None
         if not path.exists():
             return None
         with open(path, "r", encoding="utf-8") as f:
@@ -33,11 +50,17 @@ class FileStorage:
         path.write_bytes(data)
 
     def get_file_path(self, task_id: str, filename: str) -> Path | None:
-        path = self.root / task_id / filename
+        _validate_task_id(task_id)
+        path = (self.root / task_id / filename).resolve()
+        if not str(path).startswith(str(self.root.resolve())):
+            return None
         return path if path.exists() else None
 
     def delete_comparison(self, task_id: str):
-        path = self.root / task_id
+        _validate_task_id(task_id)
+        path = (self.root / task_id).resolve()
+        if not str(path).startswith(str(self.root.resolve())):
+            return
         if path.exists():
             shutil.rmtree(path)
 
@@ -54,9 +77,13 @@ class FileStorage:
         cutoff = now - max_age_hours * 3600
         count = 0
         for d in self.root.iterdir():
-            if d.is_dir():
-                mtime = d.stat().st_mtime
-                if mtime < cutoff:
-                    shutil.rmtree(d)
-                    count += 1
+            try:
+                if d.is_dir():
+                    mtime = d.stat().st_mtime
+                    if mtime < cutoff:
+                        shutil.rmtree(d)
+                        count += 1
+            except (FileNotFoundError, PermissionError, OSError):
+                # Directory may have been removed by another process
+                continue
         return count

@@ -53,17 +53,17 @@ async def run_comparison(
 
         # Save captures to disk
         if cap_a.screenshot:
-            storage.save_file(task_id, "screenshot-a.png", cap_a.screenshot)
+            await asyncio.to_thread(storage.save_file, task_id, "screenshot-a.png", cap_a.screenshot)
         if cap_b.screenshot:
-            storage.save_file(task_id, "screenshot-b.png", cap_b.screenshot)
+            await asyncio.to_thread(storage.save_file, task_id, "screenshot-b.png", cap_b.screenshot)
         if cap_a.dom_tree is not None:
-            storage.save_json(task_id, "dom-a.json", {"elements": cap_a.dom_tree})
+            await asyncio.to_thread(storage.save_json, task_id, "dom-a.json", {"elements": cap_a.dom_tree})
         if cap_b.dom_tree is not None:
-            storage.save_json(task_id, "dom-b.json", {"elements": cap_b.dom_tree})
+            await asyncio.to_thread(storage.save_json, task_id, "dom-b.json", {"elements": cap_b.dom_tree})
         if cap_a.text_content is not None:
-            storage.save_file(task_id, "text-a.txt", cap_a.text_content.encode("utf-8"))
+            await asyncio.to_thread(storage.save_file, task_id, "text-a.txt", cap_a.text_content.encode("utf-8"))
         if cap_b.text_content is not None:
-            storage.save_file(task_id, "text-b.txt", cap_b.text_content.encode("utf-8"))
+            await asyncio.to_thread(storage.save_file, task_id, "text-b.txt", cap_b.text_content.encode("utf-8"))
 
         # Save capture results into result model
         result.capture_a = PageCaptureResult(
@@ -124,7 +124,7 @@ async def run_comparison(
         result.completed_at = datetime.now(timezone.utc)
 
         # Persist result to disk
-        storage.save_json(task_id, "result.json", result.model_dump(mode="json"))
+        await asyncio.to_thread(storage.save_json, task_id, "result.json", result.model_dump(mode="json"))
 
         # Cache completed/partial results
         comparison_cache.put(request.url_a, request.url_b, result)
@@ -136,28 +136,28 @@ async def run_comparison(
         result.status = "failed"
         result.error = str(e)
         result.completed_at = datetime.now(timezone.utc)
-        storage.save_json(task_id, "result.json", result.model_dump(mode="json"))
+        await asyncio.to_thread(storage.save_json, task_id, "result.json", result.model_dump(mode="json"))
 
 
 async def _run_dom_compare(task_id, result, dom_a, dom_b):
-    result.dom_diff = compare_dom(dom_a, dom_b)
+    result.dom_diff = await asyncio.to_thread(compare_dom, dom_a, dom_b)
 
 
 async def _run_visual_compare(task_id, result, screenshot_a, screenshot_b, storage):
-    vis_result, diff_png, hl_a_png, hl_b_png = compare_visual(screenshot_a, screenshot_b)
+    vis_result, diff_png, hl_a_png, hl_b_png = await asyncio.to_thread(compare_visual, screenshot_a, screenshot_b)
 
     if diff_png:
-        storage.save_file(task_id, "diff-visual.png", diff_png)
+        await asyncio.to_thread(storage.save_file, task_id, "diff-visual.png", diff_png)
         vis_result.diff_image_path = "diff-visual.png"
     if hl_a_png:
-        storage.save_file(task_id, "highlight-a.png", hl_a_png)
+        await asyncio.to_thread(storage.save_file, task_id, "highlight-a.png", hl_a_png)
         vis_result.highlight_path_a = "highlight-a.png"
     if hl_b_png:
-        storage.save_file(task_id, "highlight-b.png", hl_b_png)
+        await asyncio.to_thread(storage.save_file, task_id, "highlight-b.png", hl_b_png)
         vis_result.highlight_path_b = "highlight-b.png"
 
     result.visual_diff = vis_result
 
 
 async def _run_text_compare(result, text_a, text_b):
-    result.text_diff = compare_text(text_a, text_b)
+    result.text_diff = await asyncio.to_thread(compare_text, text_a, text_b)

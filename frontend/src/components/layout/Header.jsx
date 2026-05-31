@@ -48,6 +48,7 @@ export default function Header() {
           <div className="ml-2 h-5 w-px bg-apple-gray-200" />
           <button
             onClick={toggleLanguage}
+            aria-label={t('header.switch_lang')}
             className="ml-1 flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium tracking-tight text-apple-gray-500 transition-colors hover:bg-black/[0.04] hover:text-apple-gray-700"
           >
             <IconGlobe className="w-4 h-4" />

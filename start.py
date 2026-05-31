@@ -13,7 +13,12 @@ import atexit
 
 backend_dir = os.path.join(os.path.dirname(__file__), "backend")
 frontend_dir = os.path.join(os.path.dirname(__file__), "frontend")
-venv_python = os.path.join(backend_dir, "venv", "Scripts", "python.exe")
+
+# Cross-platform venv Python path
+if sys.platform == "win32":
+    venv_python = os.path.join(backend_dir, "venv", "Scripts", "python.exe")
+else:
+    venv_python = os.path.join(backend_dir, "venv", "bin", "python")
 
 processes = []
 
@@ -48,7 +53,7 @@ processes.append(p)
 # Start frontend
 frontend_cmd = ["npx", "vite", "--port", "5173"]
 print("Starting frontend on http://localhost:5173 ...")
-p = subprocess.Popen(frontend_cmd, cwd=frontend_dir, shell=True)
+p = subprocess.Popen(frontend_cmd, cwd=frontend_dir, shell=(sys.platform == "win32"))
 processes.append(p)
 
 print("\n" + "=" * 50)

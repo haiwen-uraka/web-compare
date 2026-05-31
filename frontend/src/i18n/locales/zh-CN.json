@@ -5,7 +5,8 @@
   },
   "header": {
     "compare": "比较",
-    "history": "历史记录"
+    "history": "历史记录",
+    "switch_lang": "切换语言"
   },
   "home": {
     "title": "网页比较工具",
@@ -192,6 +193,19 @@
     "failed": "失败",
     "processing": "处理中",
     "pending": "等待中"
+  },
+  "similarity": {
+    "almost_identical": "几乎一致",
+    "minor_diff": "轻微差异",
+    "notable_diff": "明显差异",
+    "major_diff": "严重差异",
+    "hint_almost_identical": "两个页面基本相同",
+    "hint_minor_diff": "整体一致，存在少量差异",
+    "hint_notable_diff": "有较大差异，建议查看详情",
+    "hint_major_diff": "差异很大，可能是不同版本"
+  },
+  "common": {
+    "no_data": "暂无数据"
   },
   "error": {
     "title": "错误",

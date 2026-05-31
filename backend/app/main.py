@@ -49,13 +49,18 @@ async def lifespan(app: FastAPI):
 
 async def periodic_cleanup():
     from app.services.storage import FileStorage
-    storage = FileStorage()
+    try:
+        storage = FileStorage()
+    except Exception as e:
+        logger.error("Failed to initialize storage for cleanup: %s", e)
+        return
     while True:
         try:
             await asyncio.sleep(settings.cleanup_interval_minutes * 60)
-            cleaned = storage.cleanup_old(settings.storage_max_age_hours)
+            cleaned = await asyncio.to_thread(storage.cleanup_old, settings.storage_max_age_hours)
             if cleaned:
                 logger.info("Cleaned %d old comparison(s)", cleaned)
+            rate_limiter.cleanup()
         except asyncio.CancelledError:
             break
         except Exception as e:

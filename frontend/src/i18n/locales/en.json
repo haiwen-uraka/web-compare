@@ -5,7 +5,8 @@
   },
   "header": {
     "compare": "Compare",
-    "history": "History"
+    "history": "History",
+    "switch_lang": "Switch language"
   },
   "home": {
     "title": "Web Page Comparator",
@@ -192,6 +193,19 @@
     "failed": "Failed",
     "processing": "Processing",
     "pending": "Pending"
+  },
+  "similarity": {
+    "almost_identical": "Almost Identical",
+    "minor_diff": "Minor Differences",
+    "notable_diff": "Notable Differences",
+    "major_diff": "Major Differences",
+    "hint_almost_identical": "Pages are nearly identical",
+    "hint_minor_diff": "Mostly consistent with minor differences",
+    "hint_notable_diff": "Significant differences, check details",
+    "hint_major_diff": "Major differences, likely different versions"
+  },
+  "common": {
+    "no_data": "No data"
   },
   "error": {
     "title": "Error",

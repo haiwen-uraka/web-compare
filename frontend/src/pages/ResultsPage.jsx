@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useComparison } from '../hooks/useComparison'
 import { useCreateComparison } from '../hooks/useCreateComparison'
 import ComparisonStatus from '../components/comparison/ComparisonStatus'
@@ -60,6 +60,7 @@ function getOverallSimilarity(summary) {
 }
 
 function SimilarityBadge({ score }) {
+  const { t } = useTranslation()
   if (score === null || score === undefined) return null
   let colorClass, label, barColor
   if (score >= 95) { colorClass = 'text-apple-green'; barColor = '#34C759'; label = 'almost_identical' }
@@ -79,15 +80,12 @@ function SimilarityBadge({ score }) {
         <span className={`absolute inset-0 flex items-center justify-center text-xs font-bold tracking-tight ${colorClass}`}>{score}%</span>
       </div>
       <div>
-        <p className={`text-lg font-semibold tracking-tight ${colorClass}`}>{score}% {LABELS[label]}</p>
-        <p className="text-xs text-apple-gray-400">{HINTS[label]}</p>
+        <p className={`text-lg font-semibold tracking-tight ${colorClass}`}>{score}% {t(`similarity.${label}`)}</p>
+        <p className="text-xs text-apple-gray-400">{t(`similarity.hint_${label}`)}</p>
       </div>
     </div>
   )
 }
-
-const LABELS = { almost_identical: '几乎一致', minor_diff: '轻微差异', notable_diff: '明显差异', major_diff: '严重差异' }
-const HINTS = { almost_identical: '两个页面基本相同', minor_diff: '整体一致，存在少量差异', notable_diff: '有较大差异，建议查看详情', major_diff: '差异很大，可能是不同版本' }
 
 export default function ResultsPage() {
   const { t } = useTranslation()
@@ -95,26 +93,45 @@ export default function ResultsPage() {
   const navigate = useNavigate()
   const { data, isLoading, isError, error, refetch } = useComparison(taskId)
   const reCompareMutation = useCreateComparison()
-  const sectionIds = SECTIONS.map(s => s.id)
+  const sectionIds = useMemo(() => SECTIONS.map(s => s.id), [])
   const activeSection = useActiveSection(sectionIds)
   const [copied, setCopied] = useState(false)
+  const copyTimerRef = useRef(null)
+
+  useEffect(() => {
+    return () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current) }
+  }, [])
+
+  const [reCompareError, setReCompareError] = useState(null)
 
   const handleReCompare = useCallback(async () => {
     if (!data) return
+    setReCompareError(null)
     try {
       const result = await reCompareMutation.mutateAsync({
         url_a: data.url_a, url_b: data.url_b,
         viewport_width: 1280, viewport_height: 720, full_page: true,
         comparisons: ['dom', 'visual', 'text'],
+        _force: true,
       })
-      navigate(`/compare/${result.id}`)
-    } catch { /* mutation handles */ }
-  }, [data, reCompareMutation, navigate])
+      if (result?.id) {
+        navigate(`/compare/${result.id}`)
+      } else {
+        setReCompareError(t('error.unexpected'))
+      }
+    } catch (err) {
+      setReCompareError(err?.response?.data?.detail || err?.message || t('error.unexpected'))
+    }
+  }, [data, reCompareMutation.mutateAsync, navigate, t])
 
-  const handleCopyLink = useCallback(() => {
-    navigator.clipboard.writeText(window.location.href)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard API may be blocked; fallback silently
+    }
   }, [])
 
   if (isLoading) return <div className="mx-auto max-w-5xl animate-fade-in"><LoadingSpinner size="lg" text={t('results.loading')} /></div>
@@ -198,19 +215,19 @@ export default function ResultsPage() {
             <div className="text-sm space-y-1">
               {data.summary?.dom_diff_count !== undefined && (
                 <p className="text-apple-gray-600">
-                  <span className="font-medium">{t('summary.dom_structure')}：</span>
+                  <span className="font-medium">{t('summary.dom_structure')}: </span>
                   <span className={data.summary.dom_diff_count > 0 ? 'text-apple-orange font-medium' : 'text-apple-green'}>{data.summary.dom_diff_count} {t('summary.differences')}</span>
                 </p>
               )}
               {data.summary?.visual_diff_percentage !== undefined && (
                 <p className="text-apple-gray-600">
-                  <span className="font-medium">{t('summary.visual')}：</span>
+                  <span className="font-medium">{t('summary.visual')}: </span>
                   <span className={data.summary.visual_diff_percentage > 1 ? 'text-apple-red font-medium' : 'text-apple-green'}>{data.summary.visual_diff_percentage}% {t('summary.percent_diff')}</span>
                 </p>
               )}
               {data.summary?.text_diff_count !== undefined && (
                 <p className="text-apple-gray-600">
-                  <span className="font-medium">{t('summary.text_content')}：</span>
+                  <span className="font-medium">{t('summary.text_content')}: </span>
                   <span className={data.summary.text_diff_count > 0 ? 'text-apple-orange font-medium' : 'text-apple-green'}>{data.summary.text_diff_count} {t('summary.changes')}</span>
                 </p>
               )}
@@ -227,6 +244,13 @@ export default function ResultsPage() {
             </button>
           </div>
         </div>
+
+        {reCompareError && (
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-apple-red-light bg-apple-red-light/50 p-3 text-[12px] text-apple-red">
+            <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {reCompareError}
+          </div>
+        )}
 
         {hasVisualDiff && data.visual_diff.diff_regions && data.visual_diff.diff_regions.length > 0 && (
           <div className="mt-4 rounded-xl bg-apple-blue-light/50 p-3.5 flex items-center gap-3">

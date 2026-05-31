@@ -2,48 +2,32 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-*.egg
-
-# Virtual environment
-venv/
 .venv/
+venv/
 env/
-
-# Backend storage (runtime data)
-web-compare/backend/storage/*/
-!web-compare/backend/storage/.gitkeep
-
-# Environment files
-.env
-.env.local
-.env.*.local
 
 # Node
 node_modules/
-web-compare/frontend/node_modules/
-web-compare/frontend/dist/
 dist/
 .vite/
 
+# Runtime storage
+backend/storage/*/
+!backend/storage/.gitkeep
+
+# Environment
+.env
+.env.local
+
 # IDE
-.vscode/
 .idea/
+.vscode/
 *.swp
 *.swo
 
 # OS
 .DS_Store
 Thumbs.db
-desktop.ini
-
-# Logs
-*.log
-npm-debug.log*
-
-# Coverage
-htmlcov/
-.coverage
-coverage/
 
 # Claude Code
 .claude/
@@ -51,7 +35,14 @@ coverage/
 # Temp test files
 test_*.png
 
+# Vite build output (frontend)
+frontend/dist/
+
 # Pytest cache
 .pytest_cache/
-web-compare/backend/.pytest_cache/
-web-compare/backend/tests/__pycache__/
+backend/.pytest_cache/
+backend/tests/__pycache__/
+
+# Project docs (not for public repo)
+docs/PRD-网页比较工具需求设计文档.md
+READMEzhCN.md

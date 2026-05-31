@@ -1,9 +1,0 @@
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-pydantic-settings==2.7.0
-playwright==1.49.0
-Pillow==11.1.0
-numpy==2.2.1
-scipy==1.14.1
-httpx==0.28.1
-python-multipart==0.0.19
