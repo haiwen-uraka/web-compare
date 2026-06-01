@@ -19,6 +19,12 @@ body {
   letter-spacing: -0.022em;
 }
 
+/* Dark mode base */
+.dark body {
+  color: #F5F5F7;
+  background-color: #1D1D1F;
+}
+
 /* === Apple-style Scrollbar === */
 ::-webkit-scrollbar {
   width: 6px;
@@ -112,6 +118,17 @@ body {
   transform: scale(0.98);
 }
 
+/* Dark mode buttons */
+.dark .btn-apple-secondary {
+  background: #2D2D2F;
+  color: #F5F5F7;
+  border-color: #3D3D3F;
+}
+
+.dark .btn-apple-secondary:hover {
+  background: #3D3D3F;
+}
+
 .btn-apple-ghost {
   background: transparent;
   color: #007AFF;
@@ -132,6 +149,17 @@ body {
 
 .card-apple:hover {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Dark mode card */
+.dark .card-apple {
+  background: #2D2D2F;
+  border-color: #3D3D3F;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.dark .card-apple:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 /* === Apple Input === */
@@ -167,6 +195,28 @@ body {
 .input-apple.error {
   border-color: #FF3B30;
   box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.12);
+}
+
+/* Dark mode input */
+.dark .input-apple {
+  color: #F5F5F7;
+  background: #1D1D1F;
+  border-color: #3D3D3F;
+}
+
+.dark .input-apple::placeholder {
+  color: #6E6E73;
+}
+
+.dark .input-apple:hover {
+  border-color: #4D4D4F;
+  background: #2D2D2F;
+}
+
+.dark .input-apple:focus {
+  background: #2D2D2F;
+  border-color: #007AFF;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.25), 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 /* === Apple Slider (custom range) === */

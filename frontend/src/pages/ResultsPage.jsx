@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useBeginnerMode } from '../contexts/BeginnerModeContext'
 import { useComparison } from '../hooks/useComparison'
 import { useCreateComparison } from '../hooks/useCreateComparison'
 import ComparisonStatus from '../components/comparison/ComparisonStatus'
@@ -61,6 +62,7 @@ function getOverallSimilarity(summary) {
 
 function SimilarityBadge({ score }) {
   const { t } = useTranslation()
+  const { isBeginner } = useBeginnerMode()
   if (score === null || score === undefined) return null
   let colorClass, label, barColor
   if (score >= 95) { colorClass = 'text-apple-green'; barColor = '#34C759'; label = 'almost_identical' }
@@ -82,6 +84,7 @@ function SimilarityBadge({ score }) {
       <div>
         <p className={`text-lg font-semibold tracking-tight ${colorClass}`}>{score}% {t(`similarity.${label}`)}</p>
         <p className="text-xs text-apple-gray-400">{t(`similarity.hint_${label}`)}</p>
+        {isBeginner && <p className="text-[10px] text-apple-blue/70 mt-1 leading-relaxed">{t('beginner_mode.hint_similarity')}</p>}
       </div>
     </div>
   )
@@ -161,7 +164,7 @@ export default function ResultsPage() {
           <div className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-md bg-apple-blue text-[10px] font-bold text-white">A</span><span className="truncate">{data.url_a}</span></div>
           <div className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-md bg-apple-green text-[10px] font-bold text-white">B</span><span className="truncate">{data.url_b}</span></div>
         </div>
-        <ComparisonStatus status={data.status} />
+        <ComparisonStatus status={data.status} taskId={taskId} comparisons={data.comparisons} />
       </div>
     )
   }

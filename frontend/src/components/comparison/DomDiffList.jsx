@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useBeginnerMode } from '../../contexts/BeginnerModeContext'
+import DomDiffTree from './DomDiffTree'
 
 const LOAD_MORE_STEP = 30
 
@@ -10,7 +12,8 @@ const CATEGORY_CONFIG = {
   text:     { color: 'blue',   icon: '✎', border: '#007AFF', bg: 'rgba(0,122,255,0.06)',  badge: 'bg-blue-100 text-blue-700' },
 }
 
-function DiffItem({ item }) {
+function DiffItem({ item, isBeginner }) {
+  const { t } = useTranslation()
   const cat = CATEGORY_CONFIG[item._cat]
 
   return (
@@ -34,7 +37,7 @@ function DiffItem({ item }) {
         </span>
       </div>
 
-      {/* Inline details — always visible, no expand/collapse needed */}
+      {/* Inline details */}
       {item.reason === 'attribute_changed' && item.details && (
         <div className="mt-1.5 ml-6 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]">
           <span className="font-medium text-gray-600">{item.details.attribute}</span>
@@ -60,18 +63,23 @@ function DiffItem({ item }) {
       )}
 
       {item.reason === 'added' && (
-        <div className="mt-1 ml-6 text-[11px] text-green-600">新增元素</div>
+        <div className="mt-1 ml-6 text-[11px] text-green-600">
+          {isBeginner ? t('beginner_mode.added_elements') : t('dom_diff.added')}
+        </div>
       )}
 
       {item.reason === 'removed' && (
-        <div className="mt-1 ml-6 text-[11px] text-red-600">移除元素</div>
+        <div className="mt-1 ml-6 text-[11px] text-red-600">
+          {isBeginner ? t('beginner_mode.removed_elements') : t('dom_diff.removed')}
+        </div>
       )}
     </div>
   )
 }
 
-function CategorySection({ title, items, icon, badgeClass, count, initialShow }) {
+function CategorySection({ title, items, icon, badgeClass, count, initialShow, isBeginner }) {
   const [showCount, setShowCount] = useState(initialShow)
+  const { t } = useTranslation()
   const visibleItems = items.slice(0, showCount)
   const hasMore = items.length > showCount
 
@@ -87,7 +95,7 @@ function CategorySection({ title, items, icon, badgeClass, count, initialShow })
       </div>
       <div className="space-y-1.5">
         {visibleItems.map((item, i) => (
-          <DiffItem key={i} item={item} />
+          <DiffItem key={i} item={item} isBeginner={isBeginner} />
         ))}
       </div>
       {hasMore && (
@@ -95,7 +103,7 @@ function CategorySection({ title, items, icon, badgeClass, count, initialShow })
           onClick={() => setShowCount(c => c + LOAD_MORE_STEP)}
           className="mt-2 w-full rounded-lg border border-dashed border-gray-300 py-1.5 text-[11px] font-medium text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
         >
-          加载更多 ({items.length - showCount} 条)
+          {t('dom_diff.load_more', { count: items.length - showCount })}
         </button>
       )}
     </div>
@@ -104,8 +112,10 @@ function CategorySection({ title, items, icon, badgeClass, count, initialShow })
 
 export default function DomDiffList({ domDiff }) {
   const { t } = useTranslation()
+  const { isBeginner } = useBeginnerMode()
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState('list')
 
   if (!domDiff) return null
 
@@ -147,7 +157,9 @@ export default function DomDiffList({ domDiff }) {
   if (!hasChanges) {
     return (
       <div id="dom-diff" className="card-apple p-5">
-        <h3 className="mb-2 font-semibold text-gray-900">{t('dom_diff.title')}</h3>
+        <h3 className="mb-2 font-semibold text-gray-900">
+          {isBeginner ? t('beginner_mode.dom_diff_title') : t('dom_diff.title')}
+        </h3>
         <div className="flex items-center gap-2 rounded-xl bg-green-50 p-4 text-green-700">
           <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="4 12 9 17 20 6" /></svg>
           <span className="text-[13px] font-medium">{t('dom_diff.no_diff')}</span>
@@ -161,60 +173,62 @@ export default function DomDiffList({ domDiff }) {
 
   const filterTabs = [
     { key: 'all', label: t('dom_diff.filter_all'), count: counts.all },
-    { key: 'added', label: t('dom_diff.filter_added'), count: counts.added },
-    { key: 'removed', label: t('dom_diff.filter_removed'), count: counts.removed },
-    { key: 'changed', label: t('dom_diff.filter_changed'), count: counts.changed },
-    { key: 'text', label: t('dom_diff.filter_text'), count: counts.text },
+    { key: 'added', label: isBeginner ? t('beginner_mode.added_elements') : t('dom_diff.filter_added'), count: counts.added },
+    { key: 'removed', label: isBeginner ? t('beginner_mode.removed_elements') : t('dom_diff.filter_removed'), count: counts.removed },
+    { key: 'changed', label: isBeginner ? t('beginner_mode.attribute_changes') : t('dom_diff.filter_changed'), count: counts.changed },
+    { key: 'text', label: isBeginner ? t('beginner_mode.text_changes') : t('dom_diff.filter_text'), count: counts.text },
   ]
+
+  // Map filter key to diff reason for tree view
+  const filterToReason = {
+    'all': null,
+    'added': 'added',
+    'removed': 'removed',
+    'changed': 'attribute_changed',
+    'text': 'text_changed',
+  }
 
   return (
     <div id="dom-diff" className="card-apple p-5">
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-[17px] font-semibold tracking-tight text-gray-900">{t('dom_diff.title')}</h3>
-        <span className="text-[11px] text-gray-400">
-          {t('dom_diff.matched_elements', { matched: domDiff.matching_elements, totalA: domDiff.total_elements_a, totalB: domDiff.total_elements_b })}
-        </span>
-      </div>
-
-      {/* Stats bar */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        {[
-          { key: 'added', icon: '+', color: '#34C759', label: '新增' },
-          { key: 'removed', icon: '−', color: '#FF3B30', label: '移除' },
-          { key: 'changed', icon: '~', color: '#FF9500', label: '属性' },
-          { key: 'text', icon: '✎', color: '#007AFF', label: '文本' },
-        ].map(({ key, icon, color, label }) => (
-          <div key={key} className="flex items-center gap-1.5">
-            <span className="flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold text-white" style={{ background: color }}>{icon}</span>
-            <span className="text-[12px] text-gray-600">{label}</span>
-            <span className="text-[12px] font-bold" style={{ color }}>{counts[key]}</span>
+        <h3 className="text-[17px] font-semibold tracking-tight text-gray-900">
+          {isBeginner ? t('beginner_mode.dom_diff_title') : t('dom_diff.title')}
+        </h3>
+        <div className="flex items-center gap-3">
+          {/* View mode toggle */}
+          <div className="segmented-control">
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={viewMode === 'list' ? 'active' : ''}
+            >
+              <span className="text-[11px]">📋 {t('dom_diff.list_view')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('tree')}
+              className={viewMode === 'tree' ? 'active' : ''}
+            >
+              <span className="text-[11px]">🌳 {t('dom_diff.tree_view')}</span>
+            </button>
           </div>
-        ))}
+          <span className="text-[11px] text-gray-400">
+            {t('dom_diff.matched_elements', { matched: domDiff.matching_elements, totalA: domDiff.total_elements_a, totalB: domDiff.total_elements_b })}
+          </span>
+        </div>
       </div>
 
-      {/* Filter tabs */}
-      <div className="mb-3 flex flex-wrap gap-1">
-        {filterTabs.map(({ key, label, count }) => (
-          <button
-            key={key}
-            onClick={() => { setFilter(key); setSearch('') }}
-            className={`flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
-              filter === key
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-            }`}
-          >
-            {label}
-            <span className={`rounded-full px-1.5 text-[10px] ${filter === key ? 'bg-blue-200' : 'bg-gray-200'}`}>
-              {count}
-            </span>
-          </button>
-        ))}
-      </div>
+      {/* Beginner hint banner */}
+      {isBeginner && (
+        <div className="mb-3 flex items-start gap-2 rounded-xl bg-apple-blue-light/50 border border-apple-blue-light/60 px-3.5 py-2.5 text-[11px] text-apple-gray-600 leading-relaxed">
+          <span className="shrink-0 mt-0.5">💡</span>
+          <span>{t('beginner_mode.hint_dom_banner')}</span>
+        </div>
+      )}
 
-      {/* Search */}
-      <div className="mb-4">
+      {/* Search - shared between views */}
+      <div className="mb-3">
         <div className="relative">
           <input
             type="text"
@@ -232,43 +246,105 @@ export default function DomDiffList({ domDiff }) {
         </div>
       </div>
 
-      {/* Content: grouped by category or flat filtered list */}
-      <div className="max-h-[600px] overflow-y-auto space-y-4 pr-1">
-        {filter === 'all' ? (
-          // Grouped view
-          <>
-            <CategorySection
-              title={t('dom_diff.filter_added')} items={filterSearch(groups.added)}
-              icon="+" badgeClass={CATEGORY_CONFIG.added.badge} count={counts.added} initialShow={LOAD_MORE_STEP}
-            />
-            <CategorySection
-              title={t('dom_diff.filter_removed')} items={filterSearch(groups.removed)}
-              icon="−" badgeClass={CATEGORY_CONFIG.removed.badge} count={counts.removed} initialShow={LOAD_MORE_STEP}
-            />
-            <CategorySection
-              title={t('dom_diff.filter_changed')} items={filterSearch(groups.changed)}
-              icon="~" badgeClass={CATEGORY_CONFIG.changed.badge} count={counts.changed} initialShow={LOAD_MORE_STEP}
-            />
-            <CategorySection
-              title={t('dom_diff.filter_text')} items={filterSearch(groups.text)}
-              icon="✎" badgeClass={CATEGORY_CONFIG.text.badge} count={counts.text} initialShow={LOAD_MORE_STEP}
-            />
-          </>
-        ) : (
-          // Filtered flat view
-          <div className="space-y-1.5">
-            {filterSearch(groups[filter]).length > 0 ? (
-              filterSearch(groups[filter]).slice(0, 50).map((item, i) => (
-                <DiffItem key={i} item={item} />
-              ))
-            ) : (
-              <div className="rounded-lg bg-gray-50 p-6 text-center text-sm text-gray-400">
-                {search ? t('dom_diff.no_search_results') : t('dom_diff.no_elements_all')}
-              </div>
-            )}
+      {/* Filter tabs - shared between views */}
+      <div className="mb-4 flex flex-wrap items-center gap-1">
+        {filterTabs.map(({ key, label, count }) => (
+          <button
+            key={key}
+            onClick={() => { setFilter(key); setSearch('') }}
+            className={`flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
+              filter === key
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            {label}
+            <span className={`rounded-full px-1.5 text-[10px] ${filter === key ? 'bg-blue-200' : 'bg-gray-200'}`}>
+              {count}
+            </span>
+          </button>
+        ))}
+
+        {/* Expand/Collapse buttons - only show in tree view */}
+        {viewMode === 'tree' && (
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={() => {
+                // Trigger expand all via custom event
+                const event = new CustomEvent('dom-tree-expand-all')
+                window.dispatchEvent(event)
+              }}
+              className="px-2.5 py-1 text-[11px] font-medium text-apple-gray-500 hover:text-apple-gray-700 hover:bg-apple-gray-100 rounded-lg transition-colors"
+            >
+              {t('dom_diff.expand_all')}
+            </button>
+            <button
+              onClick={() => {
+                // Trigger collapse all via custom event
+                const event = new CustomEvent('dom-tree-collapse-all')
+                window.dispatchEvent(event)
+              }}
+              className="px-2.5 py-1 text-[11px] font-medium text-apple-gray-500 hover:text-apple-gray-700 hover:bg-apple-gray-100 rounded-lg transition-colors"
+            >
+              {t('dom_diff.collapse_all')}
+            </button>
           </div>
         )}
       </div>
+
+      {/* Content: tree view or list view */}
+      {viewMode === 'tree' ? (
+        <DomDiffTree
+          domDiff={domDiff}
+          searchQuery={search}
+          filterReason={filterToReason[filter]}
+        />
+      ) : (
+        <div className="max-h-[600px] overflow-y-auto space-y-4 pr-1">
+          {filter === 'all' ? (
+            // Grouped view
+            <>
+              <CategorySection
+                title={isBeginner ? t('beginner_mode.added_elements') : t('dom_diff.filter_added')}
+                items={filterSearch(groups.added)}
+                icon="+" badgeClass={CATEGORY_CONFIG.added.badge} count={counts.added}
+                initialShow={LOAD_MORE_STEP} isBeginner={isBeginner}
+              />
+              <CategorySection
+                title={isBeginner ? t('beginner_mode.removed_elements') : t('dom_diff.filter_removed')}
+                items={filterSearch(groups.removed)}
+                icon="−" badgeClass={CATEGORY_CONFIG.removed.badge} count={counts.removed}
+                initialShow={LOAD_MORE_STEP} isBeginner={isBeginner}
+              />
+              <CategorySection
+                title={isBeginner ? t('beginner_mode.attribute_changes') : t('dom_diff.filter_changed')}
+                items={filterSearch(groups.changed)}
+                icon="~" badgeClass={CATEGORY_CONFIG.changed.badge} count={counts.changed}
+                initialShow={LOAD_MORE_STEP} isBeginner={isBeginner}
+              />
+              <CategorySection
+                title={isBeginner ? t('beginner_mode.text_changes') : t('dom_diff.filter_text')}
+                items={filterSearch(groups.text)}
+                icon="✎" badgeClass={CATEGORY_CONFIG.text.badge} count={counts.text}
+                initialShow={LOAD_MORE_STEP} isBeginner={isBeginner}
+              />
+            </>
+          ) : (
+            // Filtered flat view
+            <div className="space-y-1.5">
+              {filterSearch(groups[filter]).length > 0 ? (
+                filterSearch(groups[filter]).slice(0, 50).map((item, i) => (
+                  <DiffItem key={i} item={item} isBeginner={isBeginner} />
+                ))
+              ) : (
+                <div className="rounded-lg bg-gray-50 p-6 text-center text-sm text-gray-400">
+                  {search ? t('dom_diff.no_search_results') : t('dom_diff.no_elements_all')}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

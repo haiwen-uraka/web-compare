@@ -27,10 +27,14 @@ async def run_comparison(
 ) -> None:
     """Run the full comparison pipeline and store results."""
     storage = FileStorage()
-    result = task_store[task_id]
+    result = task_store.get(task_id)
+    if result is None:
+        logger.warning("Task %s was deleted before comparison started", task_id)
+        return
 
     try:
         result.status = "processing"
+        result.phase = "capturing_a"
         browser = await get_browser()
 
         # Step 1: Capture pages. When URLs are identical, capture once and reuse.
@@ -42,10 +46,13 @@ async def run_comparison(
                 request.url_a, request.viewport_width, request.viewport_height, request.full_page
             )
             cap_b = cap_a
+            result.phase = "capturing_b"
         else:
+            result.phase = "capturing_a"
             capture_a_task = browser.capture_page(
                 request.url_a, request.viewport_width, request.viewport_height, request.full_page
             )
+            result.phase = "capturing_b"
             capture_b_task = browser.capture_page(
                 request.url_b, request.viewport_width, request.viewport_height, request.full_page
             )
@@ -84,20 +91,26 @@ async def run_comparison(
         tasks = []
 
         if "dom" in comparisons:
+            result.phase = "comparing_dom"
             tasks.append(
                 _run_dom_compare(task_id, result, cap_a.dom_tree, cap_b.dom_tree)
             )
         if "visual" in comparisons:
+            result.phase = "comparing_visual"
             tasks.append(
                 _run_visual_compare(task_id, result, cap_a.screenshot, cap_b.screenshot, storage)
             )
         if "text" in comparisons:
+            result.phase = "comparing_text"
             tasks.append(
                 _run_text_compare(result, cap_a.text_content, cap_b.text_content)
             )
 
         if tasks:
-            await asyncio.gather(*tasks)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for i, r in enumerate(results):
+                if isinstance(r, Exception):
+                    logger.error("Comparison task %d failed: %s", i, r, exc_info=r)
 
         # Build summary
         summary = ComparisonSummary()
@@ -121,6 +134,7 @@ async def run_comparison(
             or (cap_b.error and "Failed" in cap_b.error)
         )
         result.status = "partial" if has_errors else "completed"
+        result.phase = "completed"
         result.completed_at = datetime.now(timezone.utc)
 
         # Persist result to disk

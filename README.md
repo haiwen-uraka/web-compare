@@ -162,6 +162,50 @@ web-compare/
 | `GET` | `/api/comparisons/{id}/screenshots/{side}` | Screenshot image |
 | `GET` | `/api/comparisons/{id}/diffs/visual` | Visual diff image |
 
+## Troubleshooting
+
+### Common Issues
+
+#### Port Already in Use
+If you see errors like `Port 5173 is in use`, the frontend will automatically try the next available port (5174, 5175, etc.). Check the terminal output for the actual URL.
+
+#### Backend Port 8002 Occupied
+If you see `[Errno 10048] error while attempting to bind on address ('127.0.0.1', 8002)`:
+
+**Windows:**
+```bash
+# Find the process using port 8002
+netstat -ano | findstr :8002
+
+# Terminate the process (replace <PID> with actual process ID)
+taskkill //F //PID <PID>
+```
+
+**macOS/Linux:**
+```bash
+# Find and kill the process
+lsof -ti:8002 | xargs kill -9
+```
+
+#### Playwright Browser Not Found
+If you get browser-related errors:
+```bash
+cd backend
+source venv/Scripts/activate  # or venv/bin/activate on macOS/Linux
+playwright install chromium
+```
+
+#### Virtual Environment Issues
+If the virtual environment is corrupted:
+```bash
+cd backend
+rm -rf venv  # Delete existing venv
+python -m venv venv  # Create new one
+source venv/Scripts/activate
+pip install -r requirements.txt
+playwright install chromium
+```
+
 ## License
 
 This project is licensed under the MIT License.

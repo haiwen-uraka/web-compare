@@ -167,89 +167,88 @@ class PlaywrightManager:
         full_page: bool = True,
         retry_on_disconnect: bool = True,
     ) -> PageCapture:
-        async with self._semaphore:
-            await self._ensure_browser_connected()
+        # Use a loop instead of recursive retry to avoid semaphore deadlock
+        for _retry in (True, False):
+            async with self._semaphore:
+                await self._ensure_browser_connected()
 
-            try:
-                context = await self._browser.new_context(
-                    viewport={"width": viewport_width, "height": viewport_height},
-                    ignore_https_errors=True,
-                )
-            except Exception as e:
-                if retry_on_disconnect and self._is_connection_error(e):
-                    logger.warning(
-                        "Browser connection lost during new_context, restarting..."
-                    )
-                    async with self._lock:
-                        await self._restart_browser()
-                    return await self.capture_page(
-                        url, viewport_width, viewport_height, full_page,
-                        retry_on_disconnect=False,
-                    )
-                raise
-
-            page = await context.new_page()
-
-            nav_error = None
-            try:
-                await page.goto(url, wait_until="networkidle", timeout=settings.navigation_timeout_ms)
-            except Exception as e:
-                nav_error = e
-                logger.warning("Navigation to %s: %s", url, e)
-
-            if nav_error:
-                # Navigation had issues, but try to capture whatever loaded
                 try:
-                    screenshot = await page.screenshot(full_page=full_page, type="png")
-                    dom_tree = await self._safe_evaluate(page, DOM_EXTRACTOR_JS)
-                    text_content = await self._safe_evaluate(page, "document.body.innerText")
-                    # Only set warning (not error) if screenshot was captured successfully
-                    if screenshot:
-                        logger.info("Partial capture succeeded for %s despite navigation issue", url)
-                        return PageCapture(
-                            screenshot=screenshot,
-                            dom_tree=dom_tree,
-                            text_content=text_content,
-                            error=None,  # Don't flag as error — screenshot is usable
-                        )
-                    return PageCapture(
-                        screenshot=b"",
-                        dom_tree=None,
-                        text_content=None,
-                        error=f"Navigation issue: {nav_error}",
+                    context = await self._browser.new_context(
+                        viewport={"width": viewport_width, "height": viewport_height},
+                        ignore_https_errors=True,
                     )
-                except Exception as e2:
+                except Exception as e:
+                    if _retry and retry_on_disconnect and self._is_connection_error(e):
+                        logger.warning(
+                            "Browser connection lost during new_context, restarting..."
+                        )
+                        async with self._lock:
+                            await self._restart_browser()
+                        continue  # Release semaphore and retry
+                    raise
+
+                page = await context.new_page()
+
+                nav_error = None
+                try:
+                    await page.goto(url, wait_until="networkidle", timeout=settings.navigation_timeout_ms)
+                except Exception as e:
+                    nav_error = e
+                    logger.warning("Navigation to %s: %s", url, e)
+
+                if nav_error:
+                    try:
+                        screenshot = await page.screenshot(full_page=full_page, type="png")
+                        dom_tree = await self._safe_evaluate(page, DOM_EXTRACTOR_JS)
+                        text_content = await self._safe_evaluate(page, "document.body.innerText")
+                        if screenshot:
+                            logger.info("Partial capture succeeded for %s despite navigation issue", url)
+                            return PageCapture(
+                                screenshot=screenshot,
+                                dom_tree=dom_tree,
+                                text_content=text_content,
+                                error=None,
+                            )
+                        return PageCapture(
+                            screenshot=b"",
+                            dom_tree=None,
+                            text_content=None,
+                            error=f"Navigation issue: {nav_error}",
+                        )
+                    except Exception as e2:
+                        return PageCapture(
+                            screenshot=b"",
+                            dom_tree=None,
+                            text_content=None,
+                            error=f"Failed to load page: {e2}",
+                        )
+                    finally:
+                        await context.close()
+
+                try:
+                    screenshot, dom_tree, text_content = await asyncio.gather(
+                        page.screenshot(full_page=full_page, type="png"),
+                        page.evaluate(DOM_EXTRACTOR_JS),
+                        page.evaluate("document.body.innerText"),
+                    )
+                    return PageCapture(
+                        screenshot=screenshot,
+                        dom_tree=dom_tree,
+                        text_content=text_content,
+                    )
+                except Exception as e:
+                    logger.error("Capture failed for %s: %s", url, e)
                     return PageCapture(
                         screenshot=b"",
                         dom_tree=None,
                         text_content=None,
-                        error=f"Failed to load page: {e2}",
+                        error=str(e),
                     )
                 finally:
                     await context.close()
 
-            # Navigation succeeded, capture all data
-            try:
-                screenshot, dom_tree, text_content = await asyncio.gather(
-                    page.screenshot(full_page=full_page, type="png"),
-                    page.evaluate(DOM_EXTRACTOR_JS),
-                    page.evaluate("document.body.innerText"),
-                )
-                return PageCapture(
-                    screenshot=screenshot,
-                    dom_tree=dom_tree,
-                    text_content=text_content,
-                )
-            except Exception as e:
-                logger.error("Capture failed for %s: %s", url, e)
-                return PageCapture(
-                    screenshot=b"",
-                    dom_tree=None,
-                    text_content=None,
-                    error=str(e),
-                )
-            finally:
-                await context.close()
+        # Should not reach here, but just in case
+        return PageCapture(screenshot=b"", dom_tree=None, text_content=None, error="Capture failed after retry")
 
     async def _safe_evaluate(self, page, expression):
         try:
@@ -259,11 +258,17 @@ class PlaywrightManager:
 
 
 _manager: PlaywrightManager | None = None
+_init_lock = asyncio.Lock()
 
 
 async def get_browser() -> PlaywrightManager:
     global _manager
-    if _manager is None:
+    if _manager is not None:
+        return _manager
+    async with _init_lock:
+        # Double-check after acquiring lock
+        if _manager is not None:
+            return _manager
         _manager = PlaywrightManager()
         await _manager.start()
     return _manager

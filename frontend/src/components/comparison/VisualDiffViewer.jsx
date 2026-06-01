@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { IconTarget, IconLayers, IconSlider } from '../shared/Icons'
+import { useBeginnerMode } from '../../contexts/BeginnerModeContext'
 
 function getRegionSeverity(ratio) {
   if (ratio > 50) return 'high'
@@ -10,6 +11,7 @@ function getRegionSeverity(ratio) {
 
 export default function VisualDiffViewer({ taskId, visualDiff }) {
   const { t } = useTranslation()
+  const { isBeginner } = useBeginnerMode()
   const [view, setView] = useState('diff')
   const [imgError, setImgError] = useState({})
   const [imgLoaded, setImgLoaded] = useState({})
@@ -102,9 +104,9 @@ export default function VisualDiffViewer({ taskId, visualDiff }) {
   }
 
   const viewTabs = [
-    { key: 'diff', label: t('visual_diff.diff'), desc: '差异像素高亮' },
-    { key: 'overlay', label: '叠加对比', desc: '滑动对比 A/B' },
-    { key: 'onion', label: '洋葱皮', desc: '透明度混合' },
+    { key: 'diff', label: t('visual_diff.diff'), desc: t('visual_diff.diff') },
+    { key: 'overlay', label: t('screenshots.slider_overlay'), desc: t('screenshots.slider_overlay') },
+    { key: 'onion', label: t('visual_diff.onion_skin'), desc: t('visual_diff.onion_skin') },
   ]
 
   // Render region overlays (shared between diff and onion views)
@@ -205,9 +207,9 @@ export default function VisualDiffViewer({ taskId, visualDiff }) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 text-[17px] font-semibold tracking-tight text-apple-gray-900">
           <IconLayers className="w-5 h-5 text-apple-blue" />
-          {t('visual_diff.title')}
+          {isBeginner ? t('beginner_mode.visual_diff_title') : t('visual_diff.title')}
           <span className="text-[13px] font-normal text-apple-gray-500">
-            {t('visual_diff.diff_percentage', { percentage: visualDiff.diff_percentage })}
+            {isBeginner ? t('beginner_mode.diff_percentage') : t('visual_diff.diff_percentage', { percentage: visualDiff.diff_percentage })}
           </span>
         </h3>
         <div className="flex flex-wrap items-center gap-2">
@@ -235,6 +237,14 @@ export default function VisualDiffViewer({ taskId, visualDiff }) {
           )}
         </div>
       </div>
+
+      {/* Beginner hint banner */}
+      {isBeginner && (
+        <div className="mb-4 flex items-start gap-2 rounded-xl bg-apple-blue-light/50 border border-apple-blue-light/60 px-3.5 py-2.5 text-[11px] text-apple-gray-600 leading-relaxed">
+          <span className="shrink-0 mt-0.5">💡</span>
+          <span>{t('beginner_mode.hint_visual_banner')}</span>
+        </div>
+      )}
 
       <div className="flex gap-4 items-stretch">
           {/* ── DIFF VIEW — scrollable ── */}
@@ -296,7 +306,7 @@ export default function VisualDiffViewer({ taskId, visualDiff }) {
               <input type="range" min={1} max={100} value={swipePos} onChange={(e) => setSwipePos(Number(e.target.value))} className="apple-slider absolute bottom-3 left-3 right-3 z-10" style={{ width: 'calc(100% - 24px)' }} />
               <div className="absolute top-3 left-3 z-10"><span className="rounded-lg bg-apple-blue/90 backdrop-blur-sm px-2.5 py-1 text-[11px] font-semibold text-white shadow-apple-sm">A</span></div>
               <div className="absolute top-3 right-3 z-10"><span className="rounded-lg bg-apple-green/90 backdrop-blur-sm px-2.5 py-1 text-[11px] font-semibold text-white shadow-apple-sm">B</span></div>
-              <div className="absolute bottom-3 right-3 z-10"><span className="rounded-lg bg-black/20 backdrop-blur-sm px-2 py-0.5 text-[10px] text-white/80">← → 拖拽对比</span></div>
+              <div className="absolute bottom-3 right-3 z-10"><span className="rounded-lg bg-black/20 backdrop-blur-sm px-2 py-0.5 text-[10px] text-white/80">← → {t('screenshots.adjust')}</span></div>
             </div>
           )}
 
@@ -320,7 +330,7 @@ export default function VisualDiffViewer({ taskId, visualDiff }) {
         {renderRegionSidebar()}
       </div>
 
-      <p className="mt-1.5 text-[10px] text-apple-gray-400">滚动查看 · 点击差异区域定位</p>
+      <p className="mt-1.5 text-[10px] text-apple-gray-400">{t('visual_diff.scroll_zoom')} · {t('visual_diff.drag_to_pan')}</p>
 
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-apple-gray-400">
         <span className="font-medium text-apple-gray-500">{t('visual_diff.pixel_diff')}</span>

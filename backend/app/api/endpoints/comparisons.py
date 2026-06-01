@@ -1,11 +1,12 @@
 import asyncio
 import logging
 import uuid
+import json
 import httpx
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.models.requests import ComparisonRequest
 from app.models.results import ComparisonResult, ComparisonListItem
@@ -49,6 +50,7 @@ async def create_comparison(request: ComparisonRequest, req: Request):
         created_at=now,
         url_a=request.url_a,
         url_b=request.url_b,
+        comparisons=request.comparisons,
     )
     task_store[task_id] = result
 
@@ -63,6 +65,7 @@ async def create_comparison(request: ComparisonRequest, req: Request):
             "created_at": now.isoformat(),
             "url_a": request.url_a,
             "url_b": request.url_b,
+            "comparisons": request.comparisons,
         },
     )
 
@@ -75,7 +78,7 @@ async def probe_url(url: str = Query(..., description="URL to check reachability
         return {"reachable": False, "status_code": None, "error": msg}
 
     try:
-        async with httpx.AsyncClient(timeout=5, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=5, follow_redirects=False) as client:
             resp = await client.head(url, headers={"User-Agent": "WebCompare/1.0"})
             return {
                 "reachable": resp.status_code < 500,
@@ -94,6 +97,7 @@ async def list_comparisons(
     page_size: int = Query(20, ge=10, le=100),
     status: str | None = Query(None),
     search: str | None = Query(None),
+    include_deleted: bool = Query(False),
 ):
     storage = FileStorage()
     task_ids = storage.list_comparisons()
@@ -105,6 +109,11 @@ async def list_comparisons(
         if tid in seen:
             continue
         seen.add(tid)
+
+        # Skip soft-deleted items unless explicitly requested
+        if not include_deleted and storage.is_deleted(tid):
+            continue
+
         if tid in task_store:
             r = task_store[tid]
             items.append(
@@ -193,9 +202,68 @@ async def delete_comparison(task_id: str):
 
     task_store.pop(task_id, None)
     storage = FileStorage()
-    storage.delete_comparison(task_id)
+    storage.delete_comparison(task_id, soft=True)
 
     if url_a and url_b:
         comparison_cache.invalidate(url_a, url_b)
 
     return {"deleted": True}
+
+
+@router.post("/{task_id}/restore")
+async def restore_comparison(task_id: str):
+    import re
+    if not re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", task_id):
+        raise HTTPException(status_code=400, detail="Invalid task ID format")
+
+    storage = FileStorage()
+    if storage.restore_comparison(task_id):
+        return {"restored": True}
+    raise HTTPException(status_code=404, detail="Comparison not found or not deleted")
+
+
+@router.get("/{task_id}/progress")
+async def stream_progress(task_id: str):
+    """Stream comparison progress using Server-Sent Events (SSE)."""
+    import re
+    if not re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", task_id):
+        raise HTTPException(status_code=400, detail="Invalid task ID format")
+
+    async def event_stream():
+        last_phase = None
+        while True:
+            # Get result from task store or disk
+            result = None
+            if task_id in task_store:
+                result = task_store[task_id]
+            else:
+                storage = FileStorage()
+                data = storage.load_json(task_id, "result.json")
+                if data:
+                    result = ComparisonResult(**data)
+
+            if not result:
+                yield f"data: {json.dumps({'status': 'not_found', 'phase': 'unknown'})}\n\n"
+                break
+
+            # Only send if phase changed
+            current_phase = result.phase
+            if current_phase != last_phase:
+                yield f"data: {json.dumps({'status': result.status, 'phase': current_phase})}\n\n"
+                last_phase = current_phase
+
+            # Break if completed
+            if result.status in ('completed', 'failed', 'partial'):
+                break
+
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )

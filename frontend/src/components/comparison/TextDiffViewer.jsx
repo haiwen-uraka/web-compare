@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useBeginnerMode } from '../../contexts/BeginnerModeContext'
 
 // Simple word-level diff: highlight the changed part within a line
 function highlightWordDiff(oldLine, newLine) {
@@ -139,6 +140,7 @@ function DiffBlock({ block }) {
 
 // Context block: shows N equal lines as collapsed/expandable
 function ContextBlock({ block, contextLines, onExpand }) {
+  const { t } = useTranslation()
   const lines = block.content_a || []
   const totalLines = lines.length
 
@@ -180,7 +182,7 @@ function ContextBlock({ block, contextLines, onExpand }) {
         className="flex w-full items-center gap-2 bg-gray-50 px-3 py-1.5 text-[11px] text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors border-y border-gray-100"
       >
         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
-        展开 {hiddenCount} 行
+        {t('text_diff.expand_lines', { count: hiddenCount })}
       </button>
       {tailLines.map((line, i) => {
         const lineIdx = totalLines - contextLines + i
@@ -200,6 +202,7 @@ function ContextBlock({ block, contextLines, onExpand }) {
 
 export default function TextDiffViewer({ textDiff }) {
   const { t } = useTranslation()
+  const { isBeginner } = useBeginnerMode()
   const [contextLines, setContextLines] = useState(3)
   const [expandedBlocks, setExpandedBlocks] = useState(new Set())
 
@@ -231,7 +234,9 @@ export default function TextDiffViewer({ textDiff }) {
       <div className="border-b border-gray-200 px-5 py-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-[17px] font-semibold tracking-tight text-gray-900">{t('text_diff.title')}</h3>
+            <h3 className="text-[17px] font-semibold tracking-tight text-gray-900">
+              {isBeginner ? t('beginner_mode.text_diff_title') : t('text_diff.title')}
+            </h3>
             <p className="text-[11px] text-gray-400 mt-0.5">
               {t('text_diff.lines_info', { linesA: textDiff.total_lines_a, linesB: textDiff.total_lines_b })}
             </p>
@@ -261,13 +266,21 @@ export default function TextDiffViewer({ textDiff }) {
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  {n}行
+                  {n}{t('text_diff.context_lines')}
                 </button>
               ))}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Beginner hint banner */}
+      {isBeginner && (
+        <div className="mx-4 mt-3 flex items-start gap-2 rounded-xl bg-apple-blue-light/50 border border-apple-blue-light/60 px-3.5 py-2.5 text-[11px] text-apple-gray-600 leading-relaxed">
+          <span className="shrink-0 mt-0.5">💡</span>
+          <span>{t('beginner_mode.hint_text_banner')}</span>
+        </div>
+      )}
 
       {/* Diff content */}
       <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
@@ -299,7 +312,7 @@ export default function TextDiffViewer({ textDiff }) {
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2 w-2 rounded bg-red-300" />
           <span className="inline-block h-2 w-2 rounded bg-green-300" />
-          词级高亮
+          {t('text_diff.word_highlight')}
         </span>
       </div>
     </div>

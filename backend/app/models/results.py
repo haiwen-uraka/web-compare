@@ -86,11 +86,13 @@ class ComparisonSummary(BaseModel):
 class ComparisonResult(BaseModel):
     id: str
     status: str  # pending | processing | completed | failed | partial
+    phase: str = "queued"  # queued | capturing_a | capturing_b | comparing_dom | comparing_visual | comparing_text | completed
     created_at: datetime
     completed_at: Optional[datetime] = None
     url_a: str
     url_b: str
     error: Optional[str] = None
+    comparisons: list[str] = ["dom", "visual", "text"]  # Which comparisons were requested
 
     capture_a: Optional[PageCaptureResult] = None
     capture_b: Optional[PageCaptureResult] = None

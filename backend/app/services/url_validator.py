@@ -21,6 +21,7 @@ BLOCKED_NETWORKS = [
     ipaddress.ip_network("169.254.0.0/16"),
     ipaddress.ip_network("100.64.0.0/10"),
     ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("::1/128"),               # IPv6 loopback
     ipaddress.ip_network("fc00::/7"),
     ipaddress.ip_network("::ffff:127.0.0.0/104"),  # IPv6-mapped IPv4 loopback
 ]

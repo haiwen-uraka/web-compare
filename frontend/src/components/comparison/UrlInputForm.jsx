@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { probeUrl } from '../../api/comparisons'
+import { VIEWPORT_PRESETS } from '../../utils/constants'
 import { IconCompare, IconSwap, IconCheck, IconWarning, IconShield, IconLightning, IconChevronDown, IconBookmark } from '../shared/Icons'
 
 const DEBOUNCE_MS = 600
@@ -32,10 +33,24 @@ export default function UrlInputForm({ onSubmit, isLoading, initialUrlA, initial
   const probeTimers = useRef({ a: null, b: null })
   const latestUrlRef = useRef({ a: '', b: '' })
 
+  // Advanced options state
+  const [comparisons, setComparisons] = useState(['dom', 'visual', 'text'])
+  const [viewportPreset, setViewportPreset] = useState('desktop_1280')
+  const [customViewport, setCustomViewport] = useState({ width: 1280, height: 720 })
+  const [fullPage, setFullPage] = useState(true)
+
   useEffect(() => {
     if (initialUrlA !== undefined) setUrlA(initialUrlA)
     if (initialUrlB !== undefined) setUrlB(initialUrlB)
   }, [initialUrlA, initialUrlB])
+
+  // Cleanup probe timers on unmount
+  useEffect(() => {
+    return () => {
+      if (probeTimers.current.a) clearTimeout(probeTimers.current.a)
+      if (probeTimers.current.b) clearTimeout(probeTimers.current.b)
+    }
+  }, [])
 
   const probe = useCallback(async (url, side) => {
     if (!url || !/^https?:\/\/.+/i.test(url)) {
@@ -67,10 +82,6 @@ export default function UrlInputForm({ onSubmit, isLoading, initialUrlA, initial
   function handleUrlChange(side, value) {
     if (side === 'a') { setUrlA(value); setErrors(p => ({ ...p, urlA: '' })) }
     else { setUrlB(value); setErrors(p => ({ ...p, urlB: '' })) }
-    // Auto-prepend https://
-    if (value && !value.match(/^https?:\/\//i) && value.includes('.')) {
-      // Don't auto-correct, just probe when valid
-    }
     debouncedProbe(value, side)
   }
 
@@ -90,13 +101,30 @@ export default function UrlInputForm({ onSubmit, isLoading, initialUrlA, initial
   function handleSubmit(e) {
     e.preventDefault()
     if (!validate()) return
+
+    // Get viewport dimensions
+    let viewportWidth, viewportHeight
+    if (viewportPreset === 'custom') {
+      viewportWidth = customViewport.width
+      viewportHeight = customViewport.height
+    } else {
+      const preset = VIEWPORT_PRESETS.find(p => p.label === viewportPreset)
+      if (preset) {
+        viewportWidth = preset.width
+        viewportHeight = preset.height
+      } else {
+        viewportWidth = 1280
+        viewportHeight = 720
+      }
+    }
+
     onSubmit({
       url_a: urlA.trim(),
       url_b: urlB.trim(),
-      viewport_width: 1280,
-      viewport_height: 720,
-      full_page: true,
-      comparisons: ['dom', 'visual', 'text'],
+      viewport_width: viewportWidth,
+      viewport_height: viewportHeight,
+      full_page: fullPage,
+      comparisons: comparisons.length > 0 ? comparisons : ['dom', 'visual', 'text'],
     })
   }
 
@@ -125,6 +153,15 @@ export default function UrlInputForm({ onSubmit, isLoading, initialUrlA, initial
     const newPresets = presets.filter(p => p.id !== id)
     setPresets(newPresets)
     savePresets(newPresets)
+  }
+
+  function toggleComparison(key) {
+    setComparisons(prev => {
+      if (prev.includes(key)) {
+        return prev.filter(k => k !== key)
+      }
+      return [...prev, key]
+    })
   }
 
   const sameUrl = urlA.trim() && urlB.trim() && urlA.trim() === urlB.trim()
@@ -247,28 +284,120 @@ export default function UrlInputForm({ onSubmit, isLoading, initialUrlA, initial
           </button>
 
           {showAdvanced && (
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 animate-slide-up">
+            <div className="mt-3 space-y-4 animate-slide-up">
+              {/* Comparison Dimensions */}
               <div>
-                <label className="block text-[12px] font-medium text-apple-gray-600 mb-1">{t('onboarding.comparison_dimensions')}</label>
+                <label className="block text-[12px] font-medium text-apple-gray-600 mb-1.5">{t('onboarding.comparison_dimensions')}</label>
                 <div className="flex flex-wrap gap-1.5">
                   {[
                     { key: 'dom', label: t('onboarding.dimension_dom') },
                     { key: 'visual', label: t('onboarding.dimension_visual') },
                     { key: 'text', label: t('onboarding.dimension_text') },
                   ].map(({ key, label }) => (
-                    <span key={key} className="inline-flex items-center gap-1 rounded-lg bg-apple-gray-100 px-2.5 py-1 text-[12px] font-medium text-apple-gray-700">
-                      <IconCheck className="w-3 h-3 text-apple-blue" />
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => toggleComparison(key)}
+                      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[12px] font-medium transition-colors ${
+                        comparisons.includes(key)
+                          ? 'bg-apple-blue-light text-apple-blue border border-apple-blue/20'
+                          : 'bg-apple-gray-100 text-apple-gray-500 border border-transparent hover:bg-apple-gray-200'
+                      }`}
+                    >
+                      {comparisons.includes(key) && <IconCheck className="w-3 h-3" />}
                       {label}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>
+
+              {/* Viewport Presets */}
               <div>
-                <label className="block text-[12px] font-medium text-apple-gray-600 mb-1">{t('onboarding.screenshot_mode')}</label>
-                <span className="inline-flex items-center gap-1 rounded-lg bg-apple-gray-100 px-2.5 py-1 text-[12px] font-medium text-apple-gray-700">
-                  <IconCheck className="w-3 h-3 text-apple-blue" />
-                  {t('onboarding.full_page')}
-                </span>
+                <label className="block text-[12px] font-medium text-apple-gray-600 mb-1.5">{t('onboarding.viewport_presets')}</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {VIEWPORT_PRESETS.map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => setViewportPreset(preset.label)}
+                      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[12px] font-medium transition-colors ${
+                        viewportPreset === preset.label
+                          ? 'bg-apple-blue-light text-apple-blue border border-apple-blue/20'
+                          : 'bg-apple-gray-100 text-apple-gray-500 border border-transparent hover:bg-apple-gray-200'
+                      }`}
+                    >
+                      <span>{preset.icon}</span>
+                      {t(`onboarding.${preset.label}`)}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setViewportPreset('custom')}
+                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[12px] font-medium transition-colors ${
+                      viewportPreset === 'custom'
+                        ? 'bg-apple-blue-light text-apple-blue border border-apple-blue/20'
+                        : 'bg-apple-gray-100 text-apple-gray-500 border border-transparent hover:bg-apple-gray-200'
+                    }`}
+                  >
+                    {t('onboarding.custom_viewport')}
+                  </button>
+                </div>
+
+                {/* Custom viewport inputs */}
+                {viewportPreset === 'custom' && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={customViewport.width}
+                      onChange={(e) => setCustomViewport(prev => ({ ...prev, width: parseInt(e.target.value) || 0 }))}
+                      min="320"
+                      max="3840"
+                      className="input-apple w-24 text-[12px]"
+                      placeholder="Width"
+                    />
+                    <span className="text-[12px] text-apple-gray-400">×</span>
+                    <input
+                      type="number"
+                      value={customViewport.height}
+                      onChange={(e) => setCustomViewport(prev => ({ ...prev, height: parseInt(e.target.value) || 0 }))}
+                      min="240"
+                      max="2160"
+                      className="input-apple w-24 text-[12px]"
+                      placeholder="Height"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Screenshot Mode */}
+              <div>
+                <label className="block text-[12px] font-medium text-apple-gray-600 mb-1.5">{t('onboarding.screenshot_mode')}</label>
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setFullPage(true)}
+                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[12px] font-medium transition-colors ${
+                      fullPage
+                        ? 'bg-apple-blue-light text-apple-blue border border-apple-blue/20'
+                        : 'bg-apple-gray-100 text-apple-gray-500 border border-transparent hover:bg-apple-gray-200'
+                    }`}
+                  >
+                    {fullPage && <IconCheck className="w-3 h-3" />}
+                    {t('onboarding.full_page')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFullPage(false)}
+                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[12px] font-medium transition-colors ${
+                      !fullPage
+                        ? 'bg-apple-blue-light text-apple-blue border border-apple-blue/20'
+                        : 'bg-apple-gray-100 text-apple-gray-500 border border-transparent hover:bg-apple-gray-200'
+                    }`}
+                  >
+                    {!fullPage && <IconCheck className="w-3 h-3" />}
+                    {t('screenshots.fit')}
+                  </button>
+                </div>
               </div>
             </div>
           )}

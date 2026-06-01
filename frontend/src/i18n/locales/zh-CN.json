@@ -6,7 +6,9 @@
   "header": {
     "compare": "比较",
     "history": "历史记录",
-    "switch_lang": "切换语言"
+    "switch_lang": "切换语言",
+    "dark_mode": "暗黑模式",
+    "light_mode": "亮色模式"
   },
   "home": {
     "title": "网页比较工具",
@@ -26,6 +28,14 @@
     "dimension_text": "文字内容",
     "screenshot_mode": "截图模式",
     "full_page": "全页面截图",
+    "viewport_presets": "设备预设",
+    "desktop_1920": "桌面 1920×1080",
+    "desktop_1440": "桌面 1440×900",
+    "desktop_1280": "桌面 1280×720",
+    "tablet_768": "平板 768×1024",
+    "mobile_375": "手机 375×812",
+    "mobile_390": "手机 390×844",
+    "custom_viewport": "自定义",
     "presets": "预设",
     "no_presets": "暂无保存的预设",
     "save_current_preset": "保存当前网址为预设",
@@ -84,8 +94,14 @@
   "phases": {
     "queued": "已排队",
     "capturing": "正在捕获页面...",
+    "capturing_a": "正在捕获页面 A...",
+    "capturing_b": "正在捕获页面 B...",
     "comparing": "正在比较...",
-    "done": "完成"
+    "comparing_dom": "正在分析 DOM 差异...",
+    "comparing_visual": "正在分析视觉差异...",
+    "comparing_text": "正在分析文本差异...",
+    "done": "完成",
+    "completed": "完成"
   },
   "summary": {
     "dom_structure": "页面结构",
@@ -98,7 +114,9 @@
     "changes_found": "发现变化",
     "minor": "轻微",
     "moderate": "中等",
-    "major": "严重"
+    "major": "严重",
+    "not_compared": "未对比",
+    "not_compared_hint": "此维度未选择对比"
   },
   "screenshots": {
     "title": "页面截图",
@@ -130,7 +148,8 @@
     "regions": "个差异区域",
     "diff_regions": "差异区域列表",
     "scroll_zoom": "滚轮缩放",
-    "drag_to_pan": "放大后可拖拽平移"
+    "drag_to_pan": "放大后可拖拽平移",
+    "onion_skin": "洋葱皮"
   },
   "dom_diff": {
     "title": "元素结构",
@@ -155,7 +174,13 @@
     "no_search_results": "未找到匹配的差异",
     "no_elements_all": "此类别中无差异",
     "prev": "上一页",
-    "next": "下一页"
+    "next": "下一页",
+    "load_more": "加载更多 ({{count}} 条)",
+    "list_view": "列表视图",
+    "tree_view": "树状视图",
+    "expand_all": "展开全部",
+    "collapse_all": "折叠全部",
+    "locate_element": "定位元素"
   },
   "text_diff": {
     "title": "文本内容",
@@ -166,8 +191,10 @@
     "all_lines_match": "全部 {{count}} 行均匹配",
     "matching_lines": "⋯ {{count}} 行匹配 ⋯",
     "changed_blocks": "处变更块",
-    "context_lines": "上下文行",
-    "show_all": "显示全部"
+    "context_lines": "行",
+    "show_all": "显示全部",
+    "expand_lines": "展开 {{count}} 行",
+    "word_highlight": "词级高亮"
   },
   "history": {
     "title": "比较历史",
@@ -192,7 +219,34 @@
     "partial": "部分完成",
     "failed": "失败",
     "processing": "处理中",
-    "pending": "等待中"
+    "pending": "等待中",
+    "deleted_success": "已删除比较记录",
+    "undo": "撤销",
+    "restored": "已恢复比较记录",
+    "restore_failed": "恢复失败",
+    "delete_failed": "删除失败",
+    "search_placeholder": "搜索网址...",
+    "status_all": "全部状态",
+    "time_all": "全部时间",
+    "time_today": "今天",
+    "time_week": "最近 7 天",
+    "time_month": "最近 30 天",
+    "sort_newest": "最新优先",
+    "sort_oldest": "最旧优先",
+    "sort_most_diff": "差异最多",
+    "sort_least_diff": "差异最少",
+    "select_all": "全选",
+    "batch_delete": "批量删除（已选 {{count}} 项）",
+    "selected_count": "已选 {{count}} / {{total}} 项",
+    "showing_count": "显示 {{showing}} / {{total}} 条记录",
+    "no_results": "未找到匹配的记录",
+    "no_results_desc": "尝试调整搜索条件或筛选器",
+    "batch_delete_title": "确认批量删除",
+    "batch_delete_confirm": "确定删除选中的 {{count}} 条比较记录？",
+    "confirm_delete": "确认删除",
+    "batch_deleted": "已删除 {{count}} 条比较记录",
+    "batch_delete_failed": "批量删除失败",
+    "select": "选择"
   },
   "similarity": {
     "almost_identical": "几乎一致",
@@ -203,6 +257,79 @@
     "hint_minor_diff": "整体一致，存在少量差异",
     "hint_notable_diff": "有较大差异，建议查看详情",
     "hint_major_diff": "差异很大，可能是不同版本"
+  },
+  "beginner_mode": {
+    "enabled": "小白模式",
+    "disabled": "专家模式",
+    "toggle": "切换模式",
+    "dom_structure": "页面元素变化",
+    "visual": "视觉样式差异",
+    "text_content": "文字内容修改",
+    "pixel_diff": "视觉相似度",
+    "added_elements": "新增的元素",
+    "removed_elements": "被删除的元素",
+    "attribute_changes": "样式变化",
+    "text_changes": "文字修改",
+    "diff_percentage": "视觉相似度",
+    "total_pixels": "截图总面积",
+    "dom_diff_title": "页面元素变化",
+    "visual_diff_title": "视觉样式差异",
+    "text_diff_title": "文字内容修改",
+    "hint_similarity": "💡 相似度越高，两个页面越接近。100% 表示完全一致。",
+    "hint_dom_card": "对比两个页面的 HTML 元素结构，发现新增、删除或修改的元素",
+    "hint_visual_card": "对比两个页面的截图像素，找出视觉上不同的区域",
+    "hint_text_card": "对比两个页面的文字内容，发现新增或删除的文本",
+    "hint_dom_banner": "💡 下面列出了两个页面之间发生变化的 HTML 元素。绿色 = 新增，红色 = 删除，橙色 = 属性或文字修改。",
+    "hint_visual_banner": "💡 红色高亮区域表示两个页面截图中像素不同的地方。差异越大，红色越深。",
+    "hint_text_banner": "💡 下面逐行对比了两个页面的文字内容。红色行 = 被删除的文字，绿色行 = 新增的文字。",
+    "hint_stats_chart": "💡 此图表展示了各类变更的数量分布，柱子越长表示该类变更越多。"
+  },
+  "help": {
+    "title": "帮助中心",
+    "quick_start": "快速入门",
+    "quick_start_step1": "输入两个网址",
+    "quick_start_step1_desc": "在首页输入两个要比较的网页地址",
+    "quick_start_step2": "点击开始比较",
+    "quick_start_step2_desc": "系统会自动抓取并分析两个页面",
+    "quick_start_step3": "查看差异结果",
+    "quick_start_step3_desc": "在结果页面查看DOM、视觉和文本差异",
+    "dimensions": "各维度解读",
+    "dom_dimension": "DOM 差异怎么看？",
+    "dom_dimension_desc": "DOM差异显示了两个页面在HTML结构上的不同，包括新增、删除、属性变更和文本变更的元素。",
+    "visual_dimension": "视觉差异图怎么看？",
+    "visual_dimension_desc": "视觉差异图通过颜色高亮显示两个页面截图中像素不同的区域。红色区域表示差异较大。",
+    "text_dimension": "文本差异怎么看？",
+    "text_dimension_desc": "文本差异逐行对比两个页面的文字内容，红色表示删除，绿色表示新增。",
+    "faq": "常见问题",
+    "faq_large_screenshot": "为什么全页面截图很大？",
+    "faq_large_screenshot_desc": "全页面截图会捕获整个页面的高度，包括滚动区域，所以文件可能较大。",
+    "faq_slow_compare": "为什么对比慢？",
+    "faq_slow_compare_desc": "对比速度取决于页面复杂度和网络状况。首次对比需要抓取页面，后续可使用缓存。",
+    "shortcuts": "键盘快捷键",
+    "shortcut_ctrl_enter": "发起对比",
+    "shortcut_ctrl_k": "聚焦搜索",
+    "shortcut_question": "显示快捷键",
+    "shortcut_1_5": "跳转到对应区域",
+    "shortcut_arrows": "调整滑块位置",
+    "shortcut_escape": "重置缩放"
+  },
+  "stats": {
+    "dom_distribution": "DOM 差异分布",
+    "total_changes": "总变更数"
+  },
+  "export": {
+    "json": "导出 JSON",
+    "html": "导出 HTML",
+    "share_link": "分享链接",
+    "copied": "已复制",
+    "json_success": "JSON 文件已下载",
+    "json_failed": "导出 JSON 失败",
+    "html_success": "HTML 报告已下载",
+    "html_failed": "导出 HTML 失败",
+    "link_copied": "链接已复制到剪贴板",
+    "link_copy_failed": "复制链接失败",
+    "report_title": "网页比较报告",
+    "generated_by": "由网页比较工具生成"
   },
   "common": {
     "no_data": "暂无数据"

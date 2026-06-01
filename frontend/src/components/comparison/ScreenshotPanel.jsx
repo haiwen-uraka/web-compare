@@ -222,7 +222,7 @@ export default function ScreenshotPanel({ taskId, captureA, captureB, urlA, urlB
   }
 
   return (
-    <div id="screenshots" className="card-apple p-5">
+    <div className="card-apple p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 text-[17px] font-semibold tracking-tight text-apple-gray-900">
           <IconImage className="w-5 h-5 text-apple-blue" />

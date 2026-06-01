@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { IconCode, IconEye, IconText } from '../shared/Icons'
+import { useBeginnerMode } from '../../contexts/BeginnerModeContext'
 
 function getSeverity(value, type) {
   if (type === 'visual') {
@@ -16,6 +17,7 @@ function getSeverity(value, type) {
 
 export default function SummaryCards({ summary, similarity }) {
   const { t } = useTranslation()
+  const { isBeginner } = useBeginnerMode()
   if (!summary) return null
 
   const domSev = getSeverity(summary.dom_diff_count, 'dom')
@@ -27,22 +29,25 @@ export default function SummaryCards({ summary, similarity }) {
       title: t('summary.dom_structure'), value: summary.dom_diff_count, unit: t('summary.differences'),
       severity: domSev, sectionId: 'dom-diff', Icon: IconCode,
       hint: summary.dom_diff_count === 0 ? t('summary.no_changes') : t('summary.changes_found'),
+      beginnerHint: t('beginner_mode.hint_dom_card'),
     },
     {
       title: t('summary.visual'), value: summary.visual_diff_percentage, unit: t('summary.percent_diff'),
       severity: visSev, sectionId: 'visual-diff', Icon: IconEye,
       hint: summary.visual_diff_percentage === 0 ? t('summary.no_changes') : t('summary.changes_found'),
+      beginnerHint: t('beginner_mode.hint_visual_card'),
     },
     {
       title: t('summary.text_content'), value: summary.text_diff_count, unit: t('summary.changes'),
       severity: txtSev, sectionId: 'text-diff', Icon: IconText,
       hint: summary.text_diff_count === 0 ? t('summary.no_changes') : t('summary.changes_found'),
+      beginnerHint: t('beginner_mode.hint_text_card'),
     },
   ]
 
   return (
     <div className="grid gap-4 sm:grid-cols-3">
-      {cards.map(({ title, value, unit, severity, sectionId, Icon: CardIcon, hint }) => (
+      {cards.map(({ title, value, unit, severity, sectionId, Icon: CardIcon, hint, beginnerHint }) => (
         <a
           key={sectionId}
           href={`#${sectionId}`}
@@ -70,6 +75,7 @@ export default function SummaryCards({ summary, similarity }) {
             </div>
           )}
           <p className="mt-2 text-[11px] text-apple-gray-400">{hint}</p>
+          {isBeginner && <p className="mt-1.5 text-[10px] text-apple-blue/70 leading-relaxed">{beginnerHint}</p>}
         </a>
       ))}
     </div>

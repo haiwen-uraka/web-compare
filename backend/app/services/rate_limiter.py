@@ -2,6 +2,8 @@
 import time
 from collections import defaultdict
 
+from app.config import settings
+
 
 class RateLimiter:
     """Sliding-window rate limiter keyed by client IP."""
@@ -49,4 +51,4 @@ class RateLimiter:
             del self._clients[key]
 
 
-rate_limiter = RateLimiter()
+rate_limiter = RateLimiter(requests_per_minute=settings.rate_limit_per_minute)

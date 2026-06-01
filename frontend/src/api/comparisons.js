@@ -32,3 +32,13 @@ export async function probeUrl(url) {
 export async function deleteComparison(taskId) {
   await api.delete(`/comparisons/${taskId}`)
 }
+
+export async function restoreComparison(taskId) {
+  const response = await api.post(`/comparisons/${taskId}/restore`)
+  return response.data
+}
+
+export async function getComparisonProgress(taskId) {
+  const response = await api.get(`/comparisons/${taskId}/progress`)
+  return response.data
+}

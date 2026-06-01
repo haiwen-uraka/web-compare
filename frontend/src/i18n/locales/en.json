@@ -6,7 +6,9 @@
   "header": {
     "compare": "Compare",
     "history": "History",
-    "switch_lang": "Switch language"
+    "switch_lang": "Switch language",
+    "dark_mode": "Dark Mode",
+    "light_mode": "Light Mode"
   },
   "home": {
     "title": "Web Page Comparator",
@@ -26,6 +28,14 @@
     "dimension_text": "Text Content",
     "screenshot_mode": "Screenshot Mode",
     "full_page": "Full Page",
+    "viewport_presets": "Device Presets",
+    "desktop_1920": "Desktop 1920×1080",
+    "desktop_1440": "Desktop 1440×900",
+    "desktop_1280": "Desktop 1280×720",
+    "tablet_768": "Tablet 768×1024",
+    "mobile_375": "Mobile 375×812",
+    "mobile_390": "Mobile 390×844",
+    "custom_viewport": "Custom",
     "presets": "Presets",
     "no_presets": "No saved presets",
     "save_current_preset": "Save current URLs as preset",
@@ -84,8 +94,14 @@
   "phases": {
     "queued": "Queued",
     "capturing": "Capturing pages...",
+    "capturing_a": "Capturing page A...",
+    "capturing_b": "Capturing page B...",
     "comparing": "Comparing...",
-    "done": "Done"
+    "comparing_dom": "Analyzing DOM differences...",
+    "comparing_visual": "Analyzing visual differences...",
+    "comparing_text": "Analyzing text differences...",
+    "done": "Done",
+    "completed": "Done"
   },
   "summary": {
     "dom_structure": "Page Structure",
@@ -98,7 +114,9 @@
     "changes_found": "Changes found",
     "minor": "Minor",
     "moderate": "Moderate",
-    "major": "Major"
+    "major": "Major",
+    "not_compared": "Not Compared",
+    "not_compared_hint": "This dimension was not selected"
   },
   "screenshots": {
     "title": "Screenshots",
@@ -130,7 +148,8 @@
     "regions": "diff regions",
     "diff_regions": "Diff Regions",
     "scroll_zoom": "Scroll to zoom",
-    "drag_to_pan": "Drag to pan when zoomed"
+    "drag_to_pan": "Drag to pan when zoomed",
+    "onion_skin": "Onion Skin"
   },
   "dom_diff": {
     "title": "Element Structure",
@@ -155,7 +174,13 @@
     "no_search_results": "No matching differences found",
     "no_elements_all": "No differences in this category",
     "prev": "Prev",
-    "next": "Next"
+    "next": "Next",
+    "load_more": "Load more ({{count}})",
+    "list_view": "List View",
+    "tree_view": "Tree View",
+    "expand_all": "Expand All",
+    "collapse_all": "Collapse All",
+    "locate_element": "Locate Element"
   },
   "text_diff": {
     "title": "Text Content",
@@ -166,8 +191,10 @@
     "all_lines_match": "All {{count}} lines match",
     "matching_lines": "... {{count}} matching lines ...",
     "changed_blocks": "changed blocks",
-    "context_lines": "ctx",
-    "show_all": "Show all"
+    "context_lines": "lines",
+    "show_all": "Show all",
+    "expand_lines": "Expand {{count}} lines",
+    "word_highlight": "Word highlight"
   },
   "history": {
     "title": "Comparison History",
@@ -192,7 +219,34 @@
     "partial": "Partial",
     "failed": "Failed",
     "processing": "Processing",
-    "pending": "Pending"
+    "pending": "Pending",
+    "deleted_success": "Comparison deleted",
+    "undo": "Undo",
+    "restored": "Comparison restored",
+    "restore_failed": "Restore failed",
+    "delete_failed": "Delete failed",
+    "search_placeholder": "Search URLs...",
+    "status_all": "All Status",
+    "time_all": "All Time",
+    "time_today": "Today",
+    "time_week": "Last 7 Days",
+    "time_month": "Last 30 Days",
+    "sort_newest": "Newest First",
+    "sort_oldest": "Oldest First",
+    "sort_most_diff": "Most Differences",
+    "sort_least_diff": "Least Differences",
+    "select_all": "Select All",
+    "batch_delete": "Batch Delete ({{count}} selected)",
+    "selected_count": "{{count}} / {{total}} selected",
+    "showing_count": "Showing {{showing}} / {{total}} records",
+    "no_results": "No matching records",
+    "no_results_desc": "Try adjusting your search or filters",
+    "batch_delete_title": "Confirm Batch Delete",
+    "batch_delete_confirm": "Delete {{count}} selected comparisons?",
+    "confirm_delete": "Confirm Delete",
+    "batch_deleted": "Deleted {{count}} comparisons",
+    "batch_delete_failed": "Batch delete failed",
+    "select": "Select"
   },
   "similarity": {
     "almost_identical": "Almost Identical",
@@ -203,6 +257,79 @@
     "hint_minor_diff": "Mostly consistent with minor differences",
     "hint_notable_diff": "Significant differences, check details",
     "hint_major_diff": "Major differences, likely different versions"
+  },
+  "beginner_mode": {
+    "enabled": "Beginner Mode",
+    "disabled": "Expert Mode",
+    "toggle": "Switch Mode",
+    "dom_structure": "Page Element Changes",
+    "visual": "Visual Style Differences",
+    "text_content": "Text Content Changes",
+    "pixel_diff": "Visual Similarity",
+    "added_elements": "New Elements",
+    "removed_elements": "Removed Elements",
+    "attribute_changes": "Style Changes",
+    "text_changes": "Text Changes",
+    "diff_percentage": "Visual Similarity",
+    "total_pixels": "Total Screenshot Area",
+    "dom_diff_title": "Page Element Changes",
+    "visual_diff_title": "Visual Style Differences",
+    "text_diff_title": "Text Content Changes",
+    "hint_similarity": "💡 Higher similarity means the pages are more alike. 100% means identical.",
+    "hint_dom_card": "Compares HTML element structure between pages to find added, removed, or modified elements",
+    "hint_visual_card": "Compares page screenshots pixel by pixel to find visually different areas",
+    "hint_text_card": "Compares text content between pages to find added or removed text",
+    "hint_dom_banner": "💡 Below are the HTML elements that changed between the two pages. Green = added, Red = removed, Orange = attribute or text modified.",
+    "hint_visual_banner": "💡 Red highlighted areas show where the two page screenshots differ in pixels. Darker red means bigger differences.",
+    "hint_text_banner": "💡 Below is a line-by-line comparison of text content. Red lines = deleted text, Green lines = added text.",
+    "hint_stats_chart": "💡 This chart shows the distribution of change types. Longer bars mean more changes of that type."
+  },
+  "help": {
+    "title": "Help Center",
+    "quick_start": "Quick Start",
+    "quick_start_step1": "Enter Two URLs",
+    "quick_start_step1_desc": "Enter two web page addresses to compare on the home page",
+    "quick_start_step2": "Click Start Comparison",
+    "quick_start_step2_desc": "The system will automatically capture and analyze both pages",
+    "quick_start_step3": "View Differences",
+    "quick_start_step3_desc": "View DOM, visual, and text differences on the results page",
+    "dimensions": "Understanding Dimensions",
+    "dom_dimension": "How to read DOM differences?",
+    "dom_dimension_desc": "DOM differences show structural changes in HTML between pages, including added, removed, attribute-changed, and text-changed elements.",
+    "visual_dimension": "How to read the visual diff?",
+    "visual_dimension_desc": "The visual diff highlights pixel differences between screenshots with colors. Red areas indicate major differences.",
+    "text_dimension": "How to read text differences?",
+    "text_dimension_desc": "Text differences compare content line by line. Red means removed, green means added.",
+    "faq": "FAQ",
+    "faq_large_screenshot": "Why are full-page screenshots so large?",
+    "faq_large_screenshot_desc": "Full-page screenshots capture the entire page height including scrollable areas, resulting in larger files.",
+    "faq_slow_compare": "Why is comparison slow?",
+    "faq_slow_compare_desc": "Speed depends on page complexity and network. First comparison requires fetching; subsequent ones use cache.",
+    "shortcuts": "Keyboard Shortcuts",
+    "shortcut_ctrl_enter": "Start comparison",
+    "shortcut_ctrl_k": "Focus search",
+    "shortcut_question": "Show shortcuts",
+    "shortcut_1_5": "Jump to section",
+    "shortcut_arrows": "Adjust slider",
+    "shortcut_escape": "Reset zoom"
+  },
+  "stats": {
+    "dom_distribution": "DOM Diff Distribution",
+    "total_changes": "Total Changes"
+  },
+  "export": {
+    "json": "Export JSON",
+    "html": "Export HTML",
+    "share_link": "Share Link",
+    "copied": "Copied",
+    "json_success": "JSON file downloaded",
+    "json_failed": "Failed to export JSON",
+    "html_success": "HTML report downloaded",
+    "html_failed": "Failed to export HTML",
+    "link_copied": "Link copied to clipboard",
+    "link_copy_failed": "Failed to copy link",
+    "report_title": "Web Comparison Report",
+    "generated_by": "Generated by Web Page Comparator"
   },
   "common": {
     "no_data": "No data"
